@@ -180,6 +180,7 @@ _Decision_: Flink jobs are deployed on a shared Flink Session Cluster.
       -r flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/requirements.txt \
       -r flink-sql-emr-runner/python/requirements.txt
   ```
+- An S3 bucket for storing YAML manifests file is created. See [Job manifest](#job-manifest) section.
 
 ### Running deployment scripts
 
