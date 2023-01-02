@@ -1,0 +1,17 @@
+---
+flinkProperties:
+  pipeline.object-reuse: "true"
+  restart-strategy: fixed-delay
+  restart-strategy.fixed-delay.attempts: "2147483647"
+  restart-strategy.fixed-delay.delay: 60s
+  execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+  execution.checkpointing.interval: 60s
+  execution.checkpointing.min-pause: 60s
+  execution.checkpointing.mode: EXACTLY_ONCE
+  execution.checkpointing.timeout: 1h
+  state.backend: rocksdb
+  state.backend.incremental: "true"
+  state.backend.rocksdb.localdir: /mnt/flink
+  state.checkpoints.num-retained: "3"
+  state.checkpoints.dir: "s3://some-bucket/flink-sql-emr-runner/checkpoints/{job_name}/"
+  state.savepoints.dir: "s3://some-bucket/flink-sql-emr-runner/savepoints/{job_name}/"

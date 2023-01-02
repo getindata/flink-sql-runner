@@ -1,0 +1,6 @@
+apache-flink==1.15.1
+apache-flink-libraries==1.15.1
+boto3==1.24.43
+sqlparse==0.4.3
+s3fs==2022.11.0
+typing-extensions==3.7.4.3
