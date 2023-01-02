@@ -40,6 +40,10 @@ def parse_args():
         nargs='+',
         required=True,
         help="Paths to files containing common Flink table definitions.")
+    parser.add_argument(
+        "--pyexec-path",
+        required=True,
+        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.")
 
     return parser.parse_known_args()
 
@@ -82,5 +86,5 @@ if __name__ == "__main__":
             flink_cli_runner = FlinkCliRunner()
             jinja_template_resolver = JinjaTemplateResolver()
             EmrJobRunner(tmp.name, args.pyflink_runner_dir, args.external_job_config_bucket,
-                         args.external_job_config_prefix, args.table_definition_path,
+                         args.external_job_config_prefix, args.table_definition_path, args.pyexec_path,
                          flink_cli_runner, jinja_template_resolver).run()

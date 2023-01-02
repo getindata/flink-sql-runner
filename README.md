@@ -190,6 +190,7 @@ python3 flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/deploy.py \
     --path /some/path/to/sql/queries/ \
     --template-file flink-sql-emr-runner/emr-deployment-scripts/job-template.yaml \
     --pyflink-runner-dir flink-sql-emr-runner/python/ \
+    --pyexec-path /home/hadoop/flink-sql-emr-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
     --external-job-config-prefix flink-sql-emr-runner/manifests/ \
     --table-definition-path /some/path/to/sql/schemas/kafka-input-tables.sql \
@@ -202,6 +203,7 @@ Sample command to trigger deployment of a single query:
 python3 flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/deploy_job.py \
     --job-config-path some/path/some-query-name.yaml \
     --pyflink-runner-dir flink-sql-emr-runner/python/ \
+    --pyexec-path /home/hadoop/flink-sql-emr-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
     --external-job-config-prefix flink-sql-emr-runner/manifests/ \
     --table-definition-path /some/path/to/sql/schemas/kafka-input-tables.sql \

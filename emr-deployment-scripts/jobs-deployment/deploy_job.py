@@ -40,6 +40,10 @@ def parse_args():
         nargs='+',
         required=True,
         help="Paths to files containing common Flink table definitions.")
+    parser.add_argument(
+        "--pyexec-path",
+        required=True,
+        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.")
     return parser.parse_known_args()
 
 
@@ -159,6 +163,7 @@ class EmrJobRunner(object):
                  external_job_config_bucket: str,
                  external_job_config_prefix: str,
                  table_definition_paths: str,
+                 pyexec_path: str,
                  flink_cli_runner: FlinkCliRunner,
                  jinja_template_resolver: JinjaTemplateResolver):
         self.job_config_path = job_config_path
@@ -166,8 +171,8 @@ class EmrJobRunner(object):
         self.external_job_config_bucket = external_job_config_bucket
         self.external_job_config_prefix = external_job_config_prefix
         self.table_definition_paths = table_definition_paths
-        self.pyexec_path = "/home/hadoop/flink-sql-emr-runner/venv/bin/python3"
-        self.pyclientexec_path = "/home/hadoop/flink-sql-emr-runner/venv/bin/python3"
+        self.pyexec_path = pyexec_path
+        self.pyclientexec_path = pyexec_path
         self.flink_cli_runner = flink_cli_runner
         self.jinja_template_resolver = jinja_template_resolver
 
@@ -402,5 +407,5 @@ if __name__ == "__main__":
     flink_cli_runner = FlinkCliRunner()
     jinja_template_resolver = JinjaTemplateResolver()
     EmrJobRunner(args.job_config_path, args.pyflink_runner_dir, args.external_job_config_bucket,
-                 args.external_job_config_prefix, args.base_output_path,
+                 args.external_job_config_prefix, args.base_output_path, args.pyexec_path,
                  flink_cli_runner, jinja_template_resolver).run()

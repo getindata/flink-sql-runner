@@ -223,6 +223,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
             table_definition_paths=self.static_table_definitions_paths,
             flink_cli_runner=self.flink_cli_runner,
             jinja_template_resolver=self.jinja_template_resolver,
+            pyexec_path="/some/path/python3",
         ).run()
 
     def _write_to_local_file(self, content: str) -> str:
