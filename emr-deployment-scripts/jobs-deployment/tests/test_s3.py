@@ -4,10 +4,9 @@ import unittest
 import boto3
 from moto import mock_s3
 
-from test_s3_utils import put_object
 
 sys.path.insert(0, '../')
-
+from .test_s3_utils import put_object
 from s3 import get_latest_object
 
 
