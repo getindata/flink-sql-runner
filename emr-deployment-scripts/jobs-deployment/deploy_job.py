@@ -14,36 +14,32 @@ from cmd_utils import run_cmd
 from job_configuration import JobConfiguration
 from s3 import get_content, get_latest_object, upload_content
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--job-config-path", required=True, help="Path to the new job configuration file.")
     parser.add_argument(
-        "--job-config-path",
-        required=True,
-        help="Path to the new job configuration file.")
+        "--pyflink-runner-dir", required=True, help="Path to the directory containing PyFlink job runners."
+    )
     parser.add_argument(
-        "--pyflink-runner-dir",
-        required=True,
-        help="Path to the directory containing PyFlink job runners.")
+        "--external-job-config-bucket", required=True, help="S3 bucket where job configuration is stored."
+    )
     parser.add_argument(
-        "--external-job-config-bucket",
-        required=True,
-        help="S3 bucket where job configuration is stored.")
-    parser.add_argument(
-        "--external-job-config-prefix",
-        required=True,
-        help="S3 prefix where job configuration is stored.")
+        "--external-job-config-prefix", required=True, help="S3 prefix where job configuration is stored."
+    )
     parser.add_argument(
         "--table-definition-path",
-        nargs='+',
+        nargs="+",
         required=True,
-        help="Paths to files containing common Flink table definitions.")
+        help="Paths to files containing common Flink table definitions.",
+    )
     parser.add_argument(
         "--pyexec-path",
         required=True,
-        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.")
+        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.",
+    )
     return parser.parse_known_args()
 
 
@@ -52,9 +48,7 @@ class FlinkCliRunner(object):
     A Python wrapper for Flink Command-Line Interface. It supports only YARN as the deployment target.
     """
 
-    def __init__(self,
-                 session_app_id: str = None,
-                 session_cluster_name: str = "Flink session cluster"):
+    def __init__(self, session_app_id: str = None, session_cluster_name: str = "Flink session cluster"):
         self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
         self.session_cluster_name = session_cluster_name
 
@@ -65,8 +59,9 @@ class FlinkCliRunner(object):
         "application_1669122056871_0002".
         :return: YARN applicationId
         """
-        _, output, _ = run_cmd(f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,
-                               throw_on_error=True)
+        _, output, _ = run_cmd(
+            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """, throw_on_error=True
+        )
         yarn_application_id = output.strip()
         if yarn_application_id:
             logging.info(f"SESSION APP ID '{yarn_application_id}'.")
@@ -82,7 +77,8 @@ class FlinkCliRunner(object):
         """
         _, output, _ = run_cmd(
             f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | wc -l """,
-            throw_on_error=True)
+            throw_on_error=True,
+        )
         return "1" == output.strip()
 
     def get_job_id(self, job_name: str) -> str:
@@ -93,7 +89,8 @@ class FlinkCliRunner(object):
         """
         _, output, _ = run_cmd(
             f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 4 -d ' ' """,
-            throw_on_error=True)
+            throw_on_error=True,
+        )
         return output
 
     def stop_with_savepoint(self, job_id: str, savepoint_path: str) -> None:
@@ -108,13 +105,16 @@ class FlinkCliRunner(object):
             -Dyarn.application.id={self.session_app_id} \
             --savepointPath {savepoint_path} \
             {job_id} """,
-            throw_on_error=True)
+            throw_on_error=True,
+        )
 
-    def start(self,
-              flink_properties: Dict[str, Any],
-              python_flink_params: List[str],
-              job_arguments: List[str],
-              savepoint_path: str = None) -> None:
+    def start(
+        self,
+        flink_properties: Dict[str, Any],
+        python_flink_params: List[str],
+        job_arguments: List[str],
+        savepoint_path: str = None,
+    ) -> None:
         """
         Starts Flink job.
         :param flink_properties: A dictionary of Flink configuration properties specific for this job.
@@ -132,7 +132,8 @@ class FlinkCliRunner(object):
             --detached \
             {"" if not savepoint_path else "--fromSavepoint " + savepoint_path} \
             {" ".join(job_arguments)} """,
-            throw_on_error=True)
+            throw_on_error=True,
+        )
 
     @staticmethod
     def __concat_flink_properties(flink_properties: Dict[str, Any]) -> str:
@@ -157,15 +158,17 @@ class JinjaTemplateResolver(object):
 
 
 class EmrJobRunner(object):
-    def __init__(self,
-                 job_config_path: str,
-                 pyflink_runner_dir: str,
-                 external_job_config_bucket: str,
-                 external_job_config_prefix: str,
-                 table_definition_paths: str,
-                 pyexec_path: str,
-                 flink_cli_runner: FlinkCliRunner,
-                 jinja_template_resolver: JinjaTemplateResolver):
+    def __init__(
+        self,
+        job_config_path: str,
+        pyflink_runner_dir: str,
+        external_job_config_bucket: str,
+        external_job_config_prefix: str,
+        table_definition_paths: str,
+        pyexec_path: str,
+        flink_cli_runner: FlinkCliRunner,
+        jinja_template_resolver: JinjaTemplateResolver,
+    ):
         self.job_config_path = job_config_path
         self.pyflink_runner_dir = pyflink_runner_dir
         self.external_job_config_bucket = external_job_config_bucket
@@ -184,9 +187,9 @@ class EmrJobRunner(object):
         else:
             logging.info(f"Deploying code:\n{new_job_conf.get_code()}")
 
-        external_config = self.__fetch_job_manifest(self.external_job_config_bucket,
-                                                    self.external_job_config_prefix,
-                                                    new_job_conf.get_name())
+        external_config = self.__fetch_job_manifest(
+            self.external_job_config_bucket, self.external_job_config_prefix, new_job_conf.get_name()
+        )
         logging.info(f"External config:\n{external_config}")
 
         if not external_config:
@@ -273,16 +276,18 @@ class EmrJobRunner(object):
             self.__start(job_conf, savepoint_path=latest_savepoint[0])
 
     def __start(self, job_conf: JobConfiguration, savepoint_path=None):
-        job_arguments = [f"--table-definition-path {' '.join(self.table_definition_paths)}",
-                         f"--target-table '{job_conf.get('target-table')}'",
-                         f"--metadata-query-name '{job_conf.get_name()}'",
-                         f"--metadata-query-description '{job_conf.get_description()}'",
-                         f"--metadata-query-id '{job_conf.get_meta_query_id()}'",
-                         f"--metadata-query-version {job_conf.get_meta_query_version()}",
-                         f"--metadata-query-create-timestamp '{job_conf.get_meta_query_create_timestamp()}'"]
+        job_arguments = [
+            f"--table-definition-path {' '.join(self.table_definition_paths)}",
+            f"--target-table '{job_conf.get('target-table')}'",
+            f"--metadata-query-name '{job_conf.get_name()}'",
+            f"--metadata-query-description '{job_conf.get_description()}'",
+            f"--metadata-query-id '{job_conf.get_meta_query_id()}'",
+            f"--metadata-query-version {job_conf.get_meta_query_version()}",
+            f"--metadata-query-create-timestamp '{job_conf.get_meta_query_create_timestamp()}'",
+        ]
 
         if job_conf.is_sql():
-            job_arguments.append(f"--query \"{self.__escape_query(job_conf.get_sql())}\"")
+            job_arguments.append(f'--query "{self.__escape_query(job_conf.get_sql())}"')
             python_flink_params = [
                 f"--python {self.pyflink_runner_dir}/run-flink-sql.py",
                 f"-pyexec {self.pyexec_path}",
@@ -300,16 +305,18 @@ class EmrJobRunner(object):
             flink_properties=self._get_flink_properties(job_conf),
             python_flink_params=python_flink_params,
             job_arguments=job_arguments,
-            savepoint_path=savepoint_path
+            savepoint_path=savepoint_path,
         )
 
     def _get_flink_properties(self, job_conf: JobConfiguration) -> Dict[str, Any]:
         # We need to append query version to checkpoint and savepoint path, but we don't want to modify the manifest.
         cloned_conf = JobConfiguration(copy.deepcopy(job_conf.job_definition))
         cloned_conf.set_flink_checkpoints_dir(
-            os.path.join(cloned_conf.get_flink_checkpoints_dir(), cloned_conf.get_meta_query_version_str()))
+            os.path.join(cloned_conf.get_flink_checkpoints_dir(), cloned_conf.get_meta_query_version_str())
+        )
         cloned_conf.set_flink_savepoints_dir(
-            os.path.join(cloned_conf.get_flink_savepoints_dir(), cloned_conf.get_meta_query_version_str()))
+            os.path.join(cloned_conf.get_flink_savepoints_dir(), cloned_conf.get_meta_query_version_str())
+        )
         return cloned_conf.get_flink_properties()
 
     def __create_run_file_from_template(self, job_conf: JobConfiguration) -> str:
@@ -318,7 +325,7 @@ class EmrJobRunner(object):
             template_dir=self.pyflink_runner_dir,
             template_file="run-flink-code.py.jinja2",
             vars={"code": job_conf.get_code()},
-            output_file_path=output_file_path
+            output_file_path=output_file_path,
         )
         return output_file_path
 
@@ -352,9 +359,9 @@ class EmrJobRunner(object):
         prefix = url_parts[3]
         return self.__find_latest_state_internal(bucket_name, prefix)
 
-    def __find_latest_state_internal(self,
-                                     state_bucket: str,
-                                     state_prefix: str) -> Optional[Tuple[str, datetime.datetime]]:
+    def __find_latest_state_internal(
+        self, state_bucket: str, state_prefix: str
+    ) -> Optional[Tuple[str, datetime.datetime]]:
         last_created = get_latest_object(state_bucket, state_prefix, lambda k: k.endswith("_metadata"))
         if last_created is None:
             logging.info(f"No state found at '{state_prefix}'.")
@@ -374,8 +381,9 @@ class EmrJobRunner(object):
         return JobConfiguration(yaml.safe_load(raw_manifest)) if raw_manifest else None
 
     def __has_job_manifest_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
-        return self.__has_job_definition_changed(old_job_conf, new_job_conf) \
-               or self.__have_flink_properties_changed(old_job_conf, new_job_conf)
+        return self.__has_job_definition_changed(old_job_conf, new_job_conf) or self.__have_flink_properties_changed(
+            old_job_conf, new_job_conf
+        )
 
     def __have_flink_properties_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
         has_changed = old_job_conf.get_flink_properties() != new_job_conf.get_flink_properties()
@@ -406,6 +414,13 @@ if __name__ == "__main__":
     args, _ = parse_args()
     flink_cli_runner = FlinkCliRunner()
     jinja_template_resolver = JinjaTemplateResolver()
-    EmrJobRunner(args.job_config_path, args.pyflink_runner_dir, args.external_job_config_bucket,
-                 args.external_job_config_prefix, args.base_output_path, args.pyexec_path,
-                 flink_cli_runner, jinja_template_resolver).run()
+    EmrJobRunner(
+        args.job_config_path,
+        args.pyflink_runner_dir,
+        args.external_job_config_bucket,
+        args.external_job_config_prefix,
+        args.base_output_path,
+        args.pyexec_path,
+        flink_cli_runner,
+        jinja_template_resolver,
+    ).run()
