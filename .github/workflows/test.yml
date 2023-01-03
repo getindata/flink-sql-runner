@@ -27,7 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        pip install pytest
         pip install -r emr-deployment-scripts/jobs-deployment/requirements.txt -r emr-deployment-scripts/jobs-deployment/tests/requirements.txt
 
     - name: Test with pytest
