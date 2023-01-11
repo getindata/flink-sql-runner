@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from typing import Callable, Optional, Tuple
 
@@ -8,7 +9,7 @@ from botocore.exceptions import ClientError
 
 
 def get_content(bucket_name: str, object_key: str) -> Optional[str]:
-    s3 = boto3.client("s3")
+    s3 = _get_s3_client()
     try:
         data = s3.get_object(Bucket=bucket_name, Key=object_key)
         contents = data["Body"].read()
@@ -24,7 +25,7 @@ def get_content(bucket_name: str, object_key: str) -> Optional[str]:
 
 
 def upload_content(content: str, bucket: str, object_name: str) -> bool:
-    s3 = boto3.client("s3")
+    s3 = _get_s3_client()
     try:
         s3.put_object(Body=content.encode(), Bucket=bucket, Key=object_name)
     except ClientError as e:
@@ -34,9 +35,9 @@ def upload_content(content: str, bucket: str, object_name: str) -> bool:
 
 
 def get_latest_object(
-    bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
+        bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
 ) -> Optional[Tuple[str, datetime]]:
-    s3 = boto3.client("s3")
+    s3 = _get_s3_client()
 
     response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
     if "Contents" not in response:
@@ -51,3 +52,10 @@ def get_latest_object(
             return None
         else:
             return sorted_keys_by_ts_desc[0]
+
+
+def _get_s3_client():
+    if 'AWS_S3_ENDPOINT' in os.environ:
+        return boto3.client('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])
+    else:
+        return boto3.client('s3')

@@ -10,7 +10,8 @@ import boto3
 from moto import mock_s3
 
 sys.path.insert(0, "../")
-from deploy_job import EmrJobRunner, FlinkCliRunner, JinjaTemplateResolver
+from deploy_job import EmrJobRunner, JinjaTemplateResolver
+from flink_clients import FlinkYarnRunner
 from job_configuration import JobConfiguration, JobConfigurationBuilder
 from .test_s3_utils import put_object
 
@@ -22,7 +23,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
     TEST_JOB_NAME = "test-query"
 
     def setUp(self):
-        self.flink_cli_runner = FlinkCliRunner(session_app_id="test_app_id")
+        self.flink_cli_runner = FlinkYarnRunner(session_app_id="test_app_id")
         self.flink_cli_runner.is_job_running = MagicMock()
         self.flink_cli_runner.get_job_id = MagicMock()
         self.flink_cli_runner.stop_with_savepoint = MagicMock()

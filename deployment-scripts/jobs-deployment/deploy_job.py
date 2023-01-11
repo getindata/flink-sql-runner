@@ -5,12 +5,12 @@ import datetime
 import logging
 import os.path
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from cmd_utils import run_cmd
+from flink_clients import FlinkCli, FlinkYarnRunner, FlinkStandaloneClusterRunner
 from job_configuration import JobConfiguration
 from s3 import get_content, get_latest_object, upload_content
 
@@ -40,111 +40,15 @@ def parse_args():
         required=True,
         help="Path of the Python interpreter used to execute client code and Flink Python UDFs.",
     )
+    parser.add_argument(
+        "--deployment-target",
+        required=True,
+        choices=("yarn", "remote"),
+        help="Flink deployment target. Currently only yarn and remote are supported.")
+    parser.add_argument(
+        "--jobmanager-address",
+        help="JobManager address. Applicable only when remote deployment target has been chosen.")
     return parser.parse_known_args()
-
-
-class FlinkCliRunner(object):
-    """
-    A Python wrapper for Flink Command-Line Interface. It supports only YARN as the deployment target.
-    """
-
-    def __init__(self, session_app_id: str = None, session_cluster_name: str = "Flink session cluster"):
-        self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
-        self.session_cluster_name = session_cluster_name
-
-    @staticmethod
-    def __get_session_app_id() -> str:
-        """
-        Returns YARN applicationId of the running Flink session cluster. The ID has the following format:
-        "application_1669122056871_0002".
-        :return: YARN applicationId
-        """
-        _, output, _ = run_cmd(
-            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """, throw_on_error=True
-        )
-        yarn_application_id = output.strip()
-        if yarn_application_id:
-            logging.info(f"SESSION APP ID '{yarn_application_id}'.")
-            return yarn_application_id
-        else:
-            raise ValueError("No Flink session cluster running.")
-
-    def is_job_running(self, job_name: str) -> bool:
-        """
-        Checks if a Flink job with given name exists.
-        :param job_name: Flink job name
-        :return: 'True' if the job exists, 'False' otherwise
-        """
-        _, output, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | wc -l """,
-            throw_on_error=True,
-        )
-        return "1" == output.strip()
-
-    def get_job_id(self, job_name: str) -> str:
-        """
-        Gets ID of a Flink job with given job name.
-        :param job_name: Flink job name
-        :return: Flink job ID
-        """
-        _, output, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 4 -d ' ' """,
-            throw_on_error=True,
-        )
-        return output
-
-    def stop_with_savepoint(self, job_id: str, savepoint_path: str) -> None:
-        """
-        Creates job's final snapshot and stops the job gracefully.
-        :param job_id: Flink job ID
-        :param savepoint_path: Location where the savepoint should be saved
-        """
-        run_cmd(
-            f"""flink stop \
-            -t yarn-session \
-            -Dyarn.application.id={self.session_app_id} \
-            --savepointPath {savepoint_path} \
-            {job_id} """,
-            throw_on_error=True,
-        )
-
-    def start(
-        self,
-        flink_properties: Dict[str, Any],
-        python_flink_params: List[str],
-        job_arguments: List[str],
-        savepoint_path: str = None,
-    ) -> None:
-        """
-        Starts Flink job.
-        :param flink_properties: A dictionary of Flink configuration properties specific for this job.
-        :param python_flink_params: A list of Python-specific parameters of PyFlink.
-        :param job_arguments: A list of job parameters.
-        :param savepoint_path: The path where the savepoint of the previously executed job is stored. If 'None', the
-        job will be started with clean state.
-        """
-        run_cmd(
-            f"""flink run \
-            -t yarn-session \
-            -Dyarn.application.id={self.session_app_id} \
-            {self.__concat_flink_properties(flink_properties)} \
-            {" ".join(python_flink_params)} \
-            --detached \
-            {"" if not savepoint_path else "--fromSavepoint " + savepoint_path} \
-            {" ".join(job_arguments)} """,
-            throw_on_error=True,
-        )
-
-    @staticmethod
-    def __concat_flink_properties(flink_properties: Dict[str, Any]) -> str:
-        result = ""
-        for k, v in flink_properties.items():
-            if v is True:
-                v = "true"
-            elif v is False:
-                v = "false"
-            result += f"-D{k}={v} "
-        return result
 
 
 class JinjaTemplateResolver(object):
@@ -166,7 +70,7 @@ class EmrJobRunner(object):
         external_job_config_prefix: str,
         table_definition_paths: str,
         pyexec_path: str,
-        flink_cli_runner: FlinkCliRunner,
+        flink_cli_runner: FlinkCli,
         jinja_template_resolver: JinjaTemplateResolver,
     ):
         self.job_config_path = job_config_path
@@ -412,8 +316,11 @@ class EmrJobRunner(object):
 
 if __name__ == "__main__":
     args, _ = parse_args()
-    flink_cli_runner = FlinkCliRunner()
+
+    flink_cli_runner = FlinkYarnRunner() if args.deployment_target is "yarn" else FlinkStandaloneClusterRunner(
+        args.jobmanager_address)
     jinja_template_resolver = JinjaTemplateResolver()
+
     EmrJobRunner(
         args.job_config_path,
         args.pyflink_runner_dir,
