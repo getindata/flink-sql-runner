@@ -42,10 +42,12 @@ def parse_args():
         "--deployment-target",
         required=True,
         choices=("yarn", "remote"),
-        help="Flink deployment target. Currently only yarn and remote are supported.")
+        help="Flink deployment target. Currently only yarn and remote are supported.",
+    )
     parser.add_argument(
         "--jobmanager-address",
-        help="JobManager address. Applicable only when remote deployment target has been chosen.")
+        help="JobManager address. Applicable only when remote deployment target has been chosen.",
+    )
     return parser.parse_known_args()
 
 
@@ -84,8 +86,11 @@ if __name__ == "__main__":
         query_name = final_config["name"]
         with tempfile.NamedTemporaryFile(mode="w+t", prefix=query_name, suffix=".yaml") as tmp:
             yaml.dump(final_config, tmp)
-            flink_cli_runner = FlinkYarnRunner() if args.deployment_target is "yarn" else FlinkStandaloneClusterRunner(
-                args.jobmanager_address)
+            flink_cli_runner = (
+                FlinkYarnRunner()
+                if args.deployment_target is "yarn"
+                else FlinkStandaloneClusterRunner(args.jobmanager_address)
+            )
             jinja_template_resolver = JinjaTemplateResolver()
             EmrJobRunner(
                 tmp.name,

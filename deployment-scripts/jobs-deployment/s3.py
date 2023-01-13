@@ -35,7 +35,7 @@ def upload_content(content: str, bucket: str, object_name: str) -> bool:
 
 
 def get_latest_object(
-        bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
+    bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
 ) -> Optional[Tuple[str, datetime]]:
     s3 = _get_s3_client()
 
@@ -55,7 +55,7 @@ def get_latest_object(
 
 
 def _get_s3_client():
-    if 'AWS_S3_ENDPOINT' in os.environ:
-        return boto3.client('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])
+    if "AWS_S3_ENDPOINT" in os.environ:
+        return boto3.client("s3", endpoint_url=os.environ["AWS_S3_ENDPOINT"])
     else:
-        return boto3.client('s3')
+        return boto3.client("s3")
