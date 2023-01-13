@@ -9,41 +9,34 @@ import yaml
 
 from deploy_job import EmrJobRunner, FlinkCliRunner, JinjaTemplateResolver
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 
 def parse_args():
     # Parse cmd line arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument("--path", required=True, help="Path where query definition files are stored.")
+    parser.add_argument("--template-file", required=True, help="Path to the job configuration defaults.")
     parser.add_argument(
-        "--path",
-        required=True,
-        help="Path where query definition files are stored.")
+        "--pyflink-runner-dir", required=True, help="Path to the directory containing PyFlink job runners."
+    )
     parser.add_argument(
-        "--template-file",
-        required=True,
-        help="Path to the job configuration defaults.")
+        "--external-job-config-bucket", required=True, help="S3 bucket where job configuration is stored."
+    )
     parser.add_argument(
-        "--pyflink-runner-dir",
-        required=True,
-        help="Path to the directory containing PyFlink job runners.")
-    parser.add_argument(
-        "--external-job-config-bucket",
-        required=True,
-        help="S3 bucket where job configuration is stored.")
-    parser.add_argument(
-        "--external-job-config-prefix",
-        required=True,
-        help="S3 prefix where job configuration is stored.")
+        "--external-job-config-prefix", required=True, help="S3 prefix where job configuration is stored."
+    )
     parser.add_argument(
         "--table-definition-path",
-        nargs='+',
+        nargs="+",
         required=True,
-        help="Paths to files containing common Flink table definitions.")
+        help="Paths to files containing common Flink table definitions.",
+    )
     parser.add_argument(
         "--pyexec-path",
         required=True,
-        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.")
+        help="Path of the Python interpreter used to execute client code and Flink Python UDFs.",
+    )
 
     return parser.parse_known_args()
 
@@ -85,6 +78,13 @@ if __name__ == "__main__":
             yaml.dump(final_config, tmp)
             flink_cli_runner = FlinkCliRunner()
             jinja_template_resolver = JinjaTemplateResolver()
-            EmrJobRunner(tmp.name, args.pyflink_runner_dir, args.external_job_config_bucket,
-                         args.external_job_config_prefix, args.table_definition_path, args.pyexec_path,
-                         flink_cli_runner, jinja_template_resolver).run()
+            EmrJobRunner(
+                tmp.name,
+                args.pyflink_runner_dir,
+                args.external_job_config_bucket,
+                args.external_job_config_prefix,
+                args.table_definition_path,
+                args.pyexec_path,
+                flink_cli_runner,
+                jinja_template_resolver,
+            ).run()
