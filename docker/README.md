@@ -20,7 +20,9 @@ Minio UI can be accessed at `http://localhost:9001` (`user`/`password`).
 Sample run commands:
 
 ```bash
-docker exec -it docker-compose-flink-sql-runner-node-1 bash
+docker compose -f docker-compose/docker-compose.yaml up -d
+
+docker exec -it docker-flink-sql-runner-node-1 bash
 
 python3 /opt/flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
     --path /opt/flink-sql-runner/example/sql/queries/ \

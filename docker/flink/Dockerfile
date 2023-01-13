@@ -18,17 +18,21 @@ RUN apt-get update -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Copy runner scripts and examples.
 RUN mkdir -p /opt/flink-sql-runner/
 COPY deployment-scripts /opt/flink-sql-runner/deployment-scripts/
 COPY python /opt/flink-sql-runner/python/
 COPY example /opt/flink-sql-runner/example/
 
+# Install PyFlink and other necessary dependencies.
 RUN python3 -m pip install \
     -r /opt/flink-sql-runner/deployment-scripts/jobs-deployment/requirements.txt \
     -r /opt/flink-sql-runner/python/requirements.txt \
     apache-flink==${FLINK_VERSION} \
     apache-flink-libraries==${FLINK_VERSION}
 
+# Upgrade conflicting dependency.
+# FIXME
 RUN python3 -m pip install typing-extensions --upgrade || true
 
-ENTRYPOINT ["sleep", "infinity"]
+#ENTRYPOINT ["sleep", "infinity"]

@@ -35,16 +35,21 @@ services:
   flink-sql-runner-node:
     build:
       context: ../
-      dockerfile: ./docker-compose/flink-sql-runner-node/Dockerfile
+      dockerfile: ./docker/flink/Dockerfile
       args:
       - FLINK_VERSION=1.15.1
+    command: sleep infinity
     environment:
       - AWS_ACCESS_KEY_ID=flink-sql-runner
       - AWS_SECRET_ACCESS_KEY=secretkey
       - AWS_S3_ENDPOINT=http://minio:9000
 
   jobmanager:
-    image: flink:1.15.1-scala_2.12-java8
+    build:
+      context: ../
+      dockerfile: ./docker/flink/Dockerfile
+      args:
+      - FLINK_VERSION=1.15.1
     expose:
       - "6123"
     ports:
@@ -64,7 +69,11 @@ services:
         s3.secret-key: secretkey
 
   taskmanager:
-    image: flink:1.15.1-scala_2.12-java8
+    build:
+      context: ../
+      dockerfile: ./docker/flink/Dockerfile
+      args:
+      - FLINK_VERSION=1.15.1
     expose:
       - "6121"
       - "6122"

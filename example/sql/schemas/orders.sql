@@ -33,3 +33,17 @@ create table expensive_orders (
   'connector' = 'print'
 )
 ;
+
+create table data_stream_example_output (
+    id                          INT,
+    name                        STRING,
+    __create_timestamp          TIMESTAMP(3),
+    __query_name                STRING,
+    __query_description         STRING,
+    __query_id                  STRING,
+    __query_version             INT,
+    __query_create_timestamp    TIMESTAMP(6)
+) with (
+  'connector' = 'print'
+)
+;
