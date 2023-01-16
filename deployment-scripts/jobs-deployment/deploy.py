@@ -78,7 +78,7 @@ def read_config(query_file, template_file):
 
 
 if __name__ == "__main__":
-    args, _ = parse_args()
+    args, passthrough_args = parse_args()
     query_files = list_query_files(args.path)
 
     for query_file in query_files:
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             yaml.dump(final_config, tmp)
             flink_cli_runner = (
                 FlinkYarnRunner()
-                if args.deployment_target is "yarn"
+                if args.deployment_target == "yarn"
                 else FlinkStandaloneClusterRunner(args.jobmanager_address)
             )
             jinja_template_resolver = JinjaTemplateResolver()
@@ -101,4 +101,5 @@ if __name__ == "__main__":
                 args.pyexec_path,
                 flink_cli_runner,
                 jinja_template_resolver,
+                passthrough_args,
             ).run()

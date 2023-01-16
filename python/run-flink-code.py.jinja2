@@ -29,6 +29,7 @@ parser.add_argument("--metadata-query-description", "-qdesc", required=True, hel
 parser.add_argument("--metadata-query-id", "-qid", required=True, help="Unique SQL query id.")
 parser.add_argument("--metadata-query-version", "-qv", type=int, required=True, help="SQL query version, monotonously increasing, starts from 1.")
 parser.add_argument("--metadata-query-create-timestamp", "-qtime", required=True, help="When has the SQL query been deployed.")
+parser.add_argument("--template-params", required=False, nargs="+", help="Extra parameters that will be used when resolving template variables. Each should have form 'key=value'",)
 
 args = parser.parse_args(sys.argv[1:])
 stream_env = StreamExecutionEnvironment.get_execution_environment()
@@ -41,11 +42,9 @@ table_definitions_params = {
     'group_id': f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
 }
 
-# FIXME: allow to pass generic parameters
-if 'KAFKA_CLUSTER_CA_PASSWORD' in os.environ:
-    table_definitions_params['truststore_password'] = os.environ['KAFKA_CLUSTER_CA_PASSWORD']
-if 'KAFKA_USER_PASSWORD' in os.environ:
-    table_definitions_params['keystore_password'] = os.environ['KAFKA_USER_PASSWORD']
+for template_param in args.template_params:
+    parts = template_param.strip().split("=", 2)
+    table_definitions_params[parts[0].strip()] = parts[1].strip()
 
 for path in sql_paths:
     if path.startswith('s3://'):
@@ -69,7 +68,7 @@ for path in sql_paths:
 
 # We expect the provided code to set the 'execution_output' variable
 if 'execution_output' not in locals():
-    raise Exception(f"""Provided code does not set the 'execution_output' variable!. We expect the variable to be of
+    raise Exception(f"""Provided code does not set the 'execution_output' variable. We expect the variable to be of
                     either pyflink.datastream.Datastream or pyflink.table.Table type.""")
 
 # If execution_output is of type DataStream, we need to convert it to Table

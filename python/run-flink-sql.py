@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 from typing import Any, Dict, List
@@ -8,13 +9,15 @@ import sqlparse
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+
 TEMPORARY_INPUT_VIEW_NAME = "__temporary_input_view"
 
 
 def execute_table_definitions(definitions: List[str], params: Dict[str, Any]) -> None:
     for definition in definitions:
         definition = definition.format(**params)
-        print("Executing DDL: \n" + definition + "\n\n")
+        logging.info("Executing DDL: \n" + definition + "\n\n")
         t_env.execute_sql(definition)
 
 
@@ -37,6 +40,12 @@ parser.add_argument(
 parser.add_argument(
     "--metadata-query-create-timestamp", "-qtime", required=True, help="When has the SQL query been deployed."
 )
+parser.add_argument(
+    "--template-params",
+    required=False,
+    nargs="+",
+    help="Extra parameters that will be used when resolving template variables. Each should have form 'key=value'",
+)
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -50,11 +59,9 @@ table_definitions_params = {
     "group_id": f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
 }
 
-# FIXME: allow to pass generic parameters
-if "KAFKA_CLUSTER_CA_PASSWORD" in os.environ:
-    table_definitions_params["truststore_password"] = os.environ["KAFKA_CLUSTER_CA_PASSWORD"]
-if "KAFKA_USER_PASSWORD" in os.environ:
-    table_definitions_params["keystore_password"] = os.environ["KAFKA_USER_PASSWORD"]
+for template_param in args.template_params:
+    parts = template_param.strip().split("=", 2)
+    table_definitions_params[parts[0].strip()] = parts[1].strip()
 
 for path in sql_paths:
     if path.startswith("s3://"):
@@ -82,9 +89,9 @@ FROM
     {TEMPORARY_INPUT_VIEW_NAME}
 ;"""
 
-print(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n" + args.query + "\n\n")
+logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n" + args.query + "\n\n")
 table = t_env.sql_query(args.query)
 t_env.create_temporary_view(TEMPORARY_INPUT_VIEW_NAME, table)
 
-print("Running generated insert query: \n" + load_query)
+logging.info("Running generated insert query: \n" + load_query)
 t_env.execute_sql(load_query)
