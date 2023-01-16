@@ -1,0 +1,9 @@
+---
+name: filter-expensive-items
+description: "Filter orders where price is above 9000$."
+target-table: "expensive_orders"
+sql: >
+  SELECT *
+  FROM orders
+  WHERE price > 9000.0
+flinkProperties: {}

@@ -7,7 +7,8 @@ from typing import List
 
 import yaml
 
-from deploy_job import EmrJobRunner, FlinkCliRunner, JinjaTemplateResolver
+from deploy_job import EmrJobRunner, JinjaTemplateResolver
+from flink_clients import FlinkYarnRunner, FlinkStandaloneClusterRunner
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -37,7 +38,16 @@ def parse_args():
         required=True,
         help="Path of the Python interpreter used to execute client code and Flink Python UDFs.",
     )
-
+    parser.add_argument(
+        "--deployment-target",
+        required=True,
+        choices=("yarn", "remote"),
+        help="Flink deployment target. Currently only yarn and remote are supported.",
+    )
+    parser.add_argument(
+        "--jobmanager-address",
+        help="JobManager address. Applicable only when remote deployment target has been chosen.",
+    )
     return parser.parse_known_args()
 
 
@@ -76,7 +86,11 @@ if __name__ == "__main__":
         query_name = final_config["name"]
         with tempfile.NamedTemporaryFile(mode="w+t", prefix=query_name, suffix=".yaml") as tmp:
             yaml.dump(final_config, tmp)
-            flink_cli_runner = FlinkCliRunner()
+            flink_cli_runner = (
+                FlinkYarnRunner()
+                if args.deployment_target is "yarn"
+                else FlinkStandaloneClusterRunner(args.jobmanager_address)
+            )
             jinja_template_resolver = JinjaTemplateResolver()
             EmrJobRunner(
                 tmp.name,

@@ -1,6 +1,6 @@
 # Table of contents
 
-- [flink-sql-emr-runner](#flink-sql-emr-runner)
+- [flink-sql-runner](#flink-sql-runner)
     * [SQL job definition](#sql-job-definition)
         + [DataStream API](#datastream-api)
         + [Job output](#job-output)
@@ -20,15 +20,15 @@
 
 ---
 
-# flink-sql-emr-runner
+# flink-sql-runner
 
-_flink-sql-emr-runner_ is a framework for scheduling streaming SQL queries on Amazon Elastic MapReduce.
-It simplifies defining and executing Flink SQL jobs. The user has only to declare job's manifest YAML file which
-contains the query to be executed and basic metadata. Jobs lifecycle is managed by the framework.
+_flink-sql-runner_ is a framework for scheduling streaming SQL queries on Apache Hadoop YARN and on a standalone Flink
+cluster. It simplifies defining and executing Flink SQL jobs. The user has only to declare job's manifest YAML file
+which contains the query to be executed and basic metadata. Jobs lifecycle is managed by the framework.
 
 The module has the following structure:
 
-- `/emr-deployment-scripts/` - contains deployment scripts for AWS EMR.
+- `/deployment-scripts/` - contains deployment scripts.
 - `/python/` - contains Flink job runners.
 
 Future improvements:
@@ -57,14 +57,14 @@ sql: >-
       `kafka`.`some-kafka-input-table`
   WHERE
       `column_d` = 'SOME_VALUE'
-flinkProperties: {}
+flinkProperties: { }
 ```
 
 - `name`: The unique name of the query. This value is used to identify the job in monitoring, in internal state storage
   etc.
 - `description`: Query description.
 - `target-table`: Flink SQL table where the query results are put into. See [Job output](#job-output).
-- `sql`: Flink SQL query that will be run by flink-sql-emr-runner.
+- `sql`: Flink SQL query that will be run by flink-sql-runner.
 - `flinkProperties`: Flink properties specific for the query. Default properties are defined in `job-template.yaml`
   file. The defaults can be overwritten if needed.
   See [Flink Configuration](https://nightlies.apache.org/flink/flink-docs-master/docs/deployment/config/).
@@ -86,7 +86,7 @@ code: >
     collection=[(1, 'aaa'), (2, 'bb'), (3, 'cccc')],
     type_info=Types.ROW([Types.INT(), Types.STRING()])
   )
-flinkProperties: {}
+flinkProperties: { }
 ```
 
 ### Job output
@@ -151,7 +151,8 @@ create table `kafka`.`some-flink-table-name` (
 
 ### Infrastructure
 
-Currently, the framework supports only deployment on a Flink Session Cluster running on YARN on AWS EMR cluster.
+Currently, the framework supports only deployment on a standalone Flink Session Cluster or a Flink Session Cluster
+running on YARN.
 
 #### Session Mode
 
@@ -171,52 +172,56 @@ _Decision_: Flink jobs are deployed on a shared Flink Session Cluster.
 
 ### Prerequisites
 
-- Session cluster is up and running. Currently, it is assumed there is only one running Flink session cluster on EMR
-  cluster.
+- Session cluster is up and running.
 - All necessary Flink dependencies are available on the classpath on the EMR master node.
 - Python virtualenv with all necessary python dependencies is created on each EMR node.
   ```bash
   python3 -m pip install \
-      -r flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/requirements.txt \
-      -r flink-sql-emr-runner/python/requirements.txt
+      -r flink-sql-runner/deployment-scripts/jobs-deployment/requirements.txt \
+      -r flink-sql-runner/python/requirements.txt
   ```
 - An S3 bucket for storing YAML manifests file is created. See [Job manifest](#job-manifest) section.
 
 ### Running deployment scripts
 
-Sample command to trigger deployment of all queries:
+Sample command to trigger deployment of all queries on YARN:
 
 ```bash
-python3 flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/deploy.py \
+python3 flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
     --path /some/path/to/sql/queries/ \
-    --template-file flink-sql-emr-runner/emr-deployment-scripts/job-template.yaml \
-    --pyflink-runner-dir flink-sql-emr-runner/python/ \
-    --pyexec-path /home/hadoop/flink-sql-emr-runner/venv/bin/python3 \
+    --template-file flink-sql-runner/deployment-scripts/job-template.yaml \
+    --pyflink-runner-dir flink-sql-runner/python/ \
+    --pyexec-path /home/hadoop/flink-sql-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
-    --external-job-config-prefix flink-sql-emr-runner/manifests/ \
+    --external-job-config-prefix flink-sql-runner/manifests/ \
     --table-definition-path /some/path/to/sql/schemas/kafka-input-tables.sql \
-                            /some/path/to/sql/schemas/kafka-output-tables.sql
+                            /some/path/to/sql/schemas/kafka-output-tables.sql \
+    --deployment-target yarn
 ```
 
 Sample command to trigger deployment of a single query:
 
 ```bash
-python3 flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/deploy_job.py \
+python3 flink-sql-runner/deployment-scripts/jobs-deployment/deploy_job.py \
     --job-config-path some/path/some-query-name.yaml \
-    --pyflink-runner-dir flink-sql-emr-runner/python/ \
-    --pyexec-path /home/hadoop/flink-sql-emr-runner/venv/bin/python3 \
+    --pyflink-runner-dir flink-sql-runner/python/ \
+    --pyexec-path /home/hadoop/flink-sql-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
-    --external-job-config-prefix flink-sql-emr-runner/manifests/ \
+    --external-job-config-prefix flink-sql-runner/manifests/ \
     --table-definition-path /some/path/to/sql/schemas/kafka-input-tables.sql \
-                            /some/path/to/sql/schemas/kafka-output-tables.sql
+                            /some/path/to/sql/schemas/kafka-output-tables.sql \
+    --deployment-target yarn
 ```
+
+If your deployment target is a standalone cluster, please specify `--deployment-target remote`
+and `--jobmanager-address <host>:<port`.
 
 Please note that `job-config-path` points to a file which is the final manifest of the job, that is, already contains
 query definition merged with the template file containing defaults.
 
 ### Procedure
 
-`flink-sql-emr-runner/emr-deployment-scripts/jobs-deployment/deploy.py` script deploys all available jobs
+`flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py` script deploys all available jobs
 sequentially. The procedure applied for each query is shown in the diagram below.
 
 ```mermaid
@@ -260,9 +265,9 @@ flinkProperties:
   state.backend: rocksdb
   state.backend.incremental: 'true'
   state.backend.rocksdb.localdir: /mnt/flink
-  state.checkpoints.dir: s3://some-s3-bucket/flink-sql-emr-runner/checkpoints/query-unique-name/
+  state.checkpoints.dir: s3://some-s3-bucket/flink-sql-runner/checkpoints/query-unique-name/
   state.checkpoints.num-retained: '3'
-  state.savepoints.dir: s3://some-s3-bucket/flink-sql-emr-runner/savepoints/query-unique-name/
+  state.savepoints.dir: s3://some-s3-bucket/flink-sql-runner/savepoints/query-unique-name/
 meta:
   query-create-timestamp: '2022-12-07 08:57:42'
   query-id: 35d3d720-760d-11ed-bfeb-02e547cf7baa
@@ -282,25 +287,25 @@ What is more, `meta` section is generated automatically.
 The typical S3 structure for a job looks as follows:
 
 ```
-2022-12-08 09:13:18       1418 flink-sql-emr-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/chk-1416/_metadata
-2022-12-08 09:13:17          0 flink-sql-emr-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/chk-1416_$folder$
-2022-12-08 09:11:17          0 flink-sql-emr-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/shared_$folder$
-2022-12-08 09:11:17          0 flink-sql-emr-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/taskowned_$folder$
-2022-12-08 09:11:17          0 flink-sql-emr-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e_$folder$
-2022-12-07 08:57:52          0 flink-sql-emr-runner/checkpoints/<query-name>/1_$folder$
-2022-12-07 08:57:51          0 flink-sql-emr-runner/checkpoints/<query-name>_$folder$
-2022-12-07 08:57:51          0 flink-sql-emr-runner/checkpoints_$folder$
-2022-12-08 09:11:08       1405 flink-sql-emr-runner/savepoints/<query-name>/1/savepoint-ac8dd3-bab3bbd81f7a/_metadata
-2022-12-08 09:11:08          0 flink-sql-emr-runner/savepoints/<query-name>/1/savepoint-ac8dd3-bab3bbd81f7a_$folder$
-2022-12-08 09:11:08          0 flink-sql-emr-runner/savepoints/<query-name>/1_$folder$
-2022-12-08 09:11:08          0 flink-sql-emr-runner/savepoints/<query-name>_$folder$
-2022-12-08 09:11:07          0 flink-sql-emr-runner/savepoints_$folder$
-2022-12-08 09:11:20       1256 flink-sql-emr-runner/manifests/<query-name>.yaml
+2022-12-08 09:13:18       1418 flink-sql-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/chk-1416/_metadata
+2022-12-08 09:13:17          0 flink-sql-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/chk-1416_$folder$
+2022-12-08 09:11:17          0 flink-sql-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/shared_$folder$
+2022-12-08 09:11:17          0 flink-sql-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e/taskowned_$folder$
+2022-12-08 09:11:17          0 flink-sql-runner/checkpoints/<query-name>/1/19b9a1d6bd3502b22ff6759a2b684b2e_$folder$
+2022-12-07 08:57:52          0 flink-sql-runner/checkpoints/<query-name>/1_$folder$
+2022-12-07 08:57:51          0 flink-sql-runner/checkpoints/<query-name>_$folder$
+2022-12-07 08:57:51          0 flink-sql-runner/checkpoints_$folder$
+2022-12-08 09:11:08       1405 flink-sql-runner/savepoints/<query-name>/1/savepoint-ac8dd3-bab3bbd81f7a/_metadata
+2022-12-08 09:11:08          0 flink-sql-runner/savepoints/<query-name>/1/savepoint-ac8dd3-bab3bbd81f7a_$folder$
+2022-12-08 09:11:08          0 flink-sql-runner/savepoints/<query-name>/1_$folder$
+2022-12-08 09:11:08          0 flink-sql-runner/savepoints/<query-name>_$folder$
+2022-12-08 09:11:07          0 flink-sql-runner/savepoints_$folder$
+2022-12-08 09:11:20       1256 flink-sql-runner/manifests/<query-name>.yaml
 ```
 
-- Job manifest is stored as a YAML file in `flink-sql-emr-runner/manifests/<query-name>.yaml` file.
-- Savepoints are stored in `flink-sql-emr-runner/savepoints/<query-name>/<query-version>/` location.
-- Checkpoints are stored in `flink-sql-emr-runner/checkpoints/<query-name>/<query-version>/<flink-job-id>/` location.
+- Job manifest is stored as a YAML file in `flink-sql-runner/manifests/<query-name>.yaml` file.
+- Savepoints are stored in `flink-sql-runner/savepoints/<query-name>/<query-version>/` location.
+- Checkpoints are stored in `flink-sql-runner/checkpoints/<query-name>/<query-version>/<flink-job-id>/` location.
 
 ### Query update
 
@@ -314,14 +319,14 @@ The current `query-version` is kept in `meta` section. The version is a monotono
 In order to avoid loading obsolete state, each savepoint's and checkpoint's path contains query version, for example:
 
 ```
-$ aws s3 ls s3://some-s3-bucket/flink-sql-emr-runner/ --recursive
-2022-12-07 13:57:36       1417 flink-sql-emr-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/chk-297/_metadata
-2022-12-07 13:57:35          0 flink-sql-emr-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/chk-297_$folder$
-2022-12-07 08:57:52          0 flink-sql-emr-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/shared_$folder$
-2022-12-07 08:57:52          0 flink-sql-emr-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/taskowned_$folder$
-2022-12-07 08:57:52          0 flink-sql-emr-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47_$folder$
-2022-12-07 08:57:52          0 flink-sql-emr-runner/checkpoints/query-unique-name/1_$folder$
-2022-12-07 08:57:51          0 flink-sql-emr-runner/checkpoints/query-unique-name_$folder$
+$ aws s3 ls s3://some-s3-bucket/flink-sql-runner/ --recursive
+2022-12-07 13:57:36       1417 flink-sql-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/chk-297/_metadata
+2022-12-07 13:57:35          0 flink-sql-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/chk-297_$folder$
+2022-12-07 08:57:52          0 flink-sql-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/shared_$folder$
+2022-12-07 08:57:52          0 flink-sql-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47/taskowned_$folder$
+2022-12-07 08:57:52          0 flink-sql-runner/checkpoints/query-unique-name/1/09bd95b5c7edecda260318e47f539c47_$folder$
+2022-12-07 08:57:52          0 flink-sql-runner/checkpoints/query-unique-name/1_$folder$
+2022-12-07 08:57:51          0 flink-sql-runner/checkpoints/query-unique-name_$folder$
 ```
 
 When the query changes, the framework stops currently running job and starts a new one with a fresh state. In

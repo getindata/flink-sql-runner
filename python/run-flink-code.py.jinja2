@@ -39,15 +39,20 @@ sql_paths = args.table_definition_path
 table_definitions_params = {
     # Each job should have a unique Kafka group.id.
     'group_id': f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
-    'truststore_password': os.environ['KAFKA_CLUSTER_CA_PASSWORD'],
-    'keystore_password': os.environ['KAFKA_USER_PASSWORD'],
 }
+
+# FIXME: allow to pass generic parameters
+if 'KAFKA_CLUSTER_CA_PASSWORD' in os.environ:
+    table_definitions_params['truststore_password'] = os.environ['KAFKA_CLUSTER_CA_PASSWORD']
+if 'KAFKA_USER_PASSWORD' in os.environ:
+    table_definitions_params['keystore_password'] = os.environ['KAFKA_USER_PASSWORD']
 
 for path in sql_paths:
     if path.startswith('s3://'):
         # Reading table definitions from S3 bucket
         _, path = path.split("://", 1)
-        fs = s3fs.S3FileSystem()
+        client_args = {"enpoint_url": os.environ["AWS_S3_ENDPOINT"]} if "AWS_S3_ENDPOINT" in os.environ else {}
+        fs = s3fs.S3FileSystem(client_kwargs=client_args)
         with fs.open(path, 'rb') as file:
             execute_table_definitions(sqlparse.split(file.read()), table_definitions_params)
     else:
