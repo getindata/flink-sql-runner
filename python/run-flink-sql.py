@@ -60,10 +60,7 @@ for path in sql_paths:
     if path.startswith("s3://"):
         # Reading table definitions from S3 bucket
         _, path = path.split("://", 1)
-        if "AWS_S3_ENDPOINT" in os.environ:
-            client_args = {"enpoint_url": os.environ["AWS_S3_ENDPOINT"]}
-        else:
-            client_args = {}
+        client_args = {"enpoint_url": os.environ["AWS_S3_ENDPOINT"]} if "AWS_S3_ENDPOINT" in os.environ else {}
         fs = s3fs.S3FileSystem(client_kwargs=client_args)
         with fs.open(path, "rb") as file:
             execute_table_definitions(sqlparse.split(file.read()), table_definitions_params)

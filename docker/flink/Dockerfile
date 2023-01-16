@@ -34,5 +34,3 @@ RUN python3 -m pip install \
 # Upgrade conflicting dependency.
 # FIXME
 RUN python3 -m pip install typing-extensions --upgrade || true
-
-#ENTRYPOINT ["sleep", "infinity"]

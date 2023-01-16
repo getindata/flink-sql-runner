@@ -9,9 +9,8 @@ from botocore.exceptions import ClientError
 
 
 def get_content(bucket_name: str, object_key: str) -> Optional[str]:
-    s3 = _get_s3_client()
     try:
-        data = s3.get_object(Bucket=bucket_name, Key=object_key)
+        data = S3ClientProvider().get().get_object(Bucket=bucket_name, Key=object_key)
         contents = data["Body"].read()
         return contents.decode("utf-8")
     except botocore.exceptions.ClientError as err:
@@ -25,9 +24,8 @@ def get_content(bucket_name: str, object_key: str) -> Optional[str]:
 
 
 def upload_content(content: str, bucket: str, object_name: str) -> bool:
-    s3 = _get_s3_client()
     try:
-        s3.put_object(Body=content.encode(), Bucket=bucket, Key=object_name)
+        S3ClientProvider().get().put_object(Body=content.encode(), Bucket=bucket, Key=object_name)
     except ClientError as e:
         logging.error(e)
         return False
@@ -37,9 +35,7 @@ def upload_content(content: str, bucket: str, object_name: str) -> bool:
 def get_latest_object(
     bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
 ) -> Optional[Tuple[str, datetime]]:
-    s3 = _get_s3_client()
-
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    response = S3ClientProvider().get().list_objects_v2(Bucket=bucket, Prefix=prefix)
     if "Contents" not in response:
         return None
     else:
@@ -54,8 +50,16 @@ def get_latest_object(
             return sorted_keys_by_ts_desc[0]
 
 
-def _get_s3_client():
-    if "AWS_S3_ENDPOINT" in os.environ:
-        return boto3.client("s3", endpoint_url=os.environ["AWS_S3_ENDPOINT"])
-    else:
-        return boto3.client("s3")
+class S3ClientProvider:
+    __client = None
+
+    def get(self):
+        if not S3ClientProvider.__client:
+            self.__init()
+        return S3ClientProvider.__client
+
+    def __init(self):
+        if "AWS_S3_ENDPOINT" in os.environ:
+            S3ClientProvider.__client = boto3.client("s3", endpoint_url=os.environ["AWS_S3_ENDPOINT"])
+        else:
+            S3ClientProvider.__client = boto3.client("s3")

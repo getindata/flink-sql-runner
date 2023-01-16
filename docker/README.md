@@ -35,3 +35,18 @@ python3 /opt/flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
     --deployment-target remote \
     --jobmanager-address jobmanager:8081
 ```
+
+## MinIO
+
+MinIO serves as S3 replacement in docker environment. To make the framework work properly with MinIO, a few adjustments
+have been made.
+
+- Specify `endpoint_url` in Python S3 clients. To this end, `AWS_S3_ENDPOINT` environment variable have been introduced.
+  If the variable is specified, then `endpoint_url=${AWS_S3_ENDPOINT}`.
+- `flink-conf.yaml` has to contain the following properties:
+  ```yaml
+  s3.endpoint: http://minio:9000
+  s3.path-style-access: true
+  s3.access-key: flink-sql-runner
+  s3.secret-key: secretkey
+  ```
