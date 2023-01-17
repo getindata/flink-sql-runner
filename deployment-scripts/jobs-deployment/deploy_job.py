@@ -5,7 +5,7 @@ import datetime
 import logging
 import os.path
 import uuid
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -74,6 +74,7 @@ class EmrJobRunner(object):
         pyexec_path: str,
         flink_cli_runner: FlinkCli,
         jinja_template_resolver: JinjaTemplateResolver,
+        passthrough_args: List[str],
     ):
         self.job_config_path = job_config_path
         self.pyflink_runner_dir = pyflink_runner_dir
@@ -84,6 +85,7 @@ class EmrJobRunner(object):
         self.pyclientexec_path = pyexec_path
         self.flink_cli_runner = flink_cli_runner
         self.jinja_template_resolver = jinja_template_resolver
+        self.passthrough_args = passthrough_args
 
     def run(self) -> None:
         new_job_conf = JobConfiguration(self.__read_config(self.job_config_path))
@@ -191,6 +193,7 @@ class EmrJobRunner(object):
             f"--metadata-query-version {job_conf.get_meta_query_version()}",
             f"--metadata-query-create-timestamp '{job_conf.get_meta_query_create_timestamp()}'",
         ]
+        job_arguments.extend(self.passthrough_args)
 
         if job_conf.is_sql():
             job_arguments.append(f'--query "{self.__escape_query(job_conf.get_sql())}"')
@@ -317,10 +320,9 @@ class EmrJobRunner(object):
 
 
 if __name__ == "__main__":
-    args, _ = parse_args()
-
+    args, passthrough_args = parse_args()
     flink_cli_runner = (
-        FlinkYarnRunner() if args.deployment_target is "yarn" else FlinkStandaloneClusterRunner(args.jobmanager_address)
+        FlinkYarnRunner() if args.deployment_target == "yarn" else FlinkStandaloneClusterRunner(args.jobmanager_address)
     )
     jinja_template_resolver = JinjaTemplateResolver()
 
@@ -333,4 +335,5 @@ if __name__ == "__main__":
         args.pyexec_path,
         flink_cli_runner,
         jinja_template_resolver,
+        passthrough_args,
     ).run()

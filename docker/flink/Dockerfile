@@ -22,7 +22,6 @@ RUN apt-get update -y && \
 RUN mkdir -p /opt/flink-sql-runner/
 COPY deployment-scripts /opt/flink-sql-runner/deployment-scripts/
 COPY python /opt/flink-sql-runner/python/
-COPY example /opt/flink-sql-runner/example/
 
 # Install PyFlink and other necessary dependencies.
 RUN python3 -m pip install \
@@ -34,3 +33,5 @@ RUN python3 -m pip install \
 # Upgrade conflicting dependency.
 # FIXME
 RUN python3 -m pip install typing-extensions --upgrade || true
+
+COPY example /opt/flink-sql-runner/example/
