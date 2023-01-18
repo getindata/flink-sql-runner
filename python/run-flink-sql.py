@@ -94,13 +94,15 @@ result_fields = ["*"]
 if args.timestamp_field_name:
     result_fields.append(f"NOW() AS {args.timestamp_field_name}")
 if args.include_query_metadata:
-    result_fields.extend([
-        f"CAST('{args.metadata_query_name}' AS STRING) AS __query_name",
-        f"CAST('{args.metadata_query_description}' AS STRING) AS __query_description",
-        f"CAST('{args.metadata_query_id}' AS STRING) AS __query_id",
-        f"CAST({args.metadata_query_version} AS INT) AS __query_version",
-        f"CAST('{args.metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp",
-    ])
+    result_fields.extend(
+        [
+            f"CAST('{args.metadata_query_name}' AS STRING) AS __query_name",
+            f"CAST('{args.metadata_query_description}' AS STRING) AS __query_description",
+            f"CAST('{args.metadata_query_id}' AS STRING) AS __query_id",
+            f"CAST({args.metadata_query_version} AS INT) AS __query_version",
+            f"CAST('{args.metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp",
+        ]
+    )
 
 load_query = f"""INSERT INTO {args.target_table}
 SELECT
