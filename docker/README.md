@@ -36,7 +36,24 @@ python3 /opt/flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
     --jobmanager-address jobmanager:8081
 ```
 
-## MinIO
+---
+
+## Internals
+
+
+### Docker image enhancements
+
+- [Using Flink Python on Docker](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/resource-providers/standalone/docker/#using-flink-python-on-docker)
+- [Enable HDFS plugin](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/filesystems/s3/#hadooppresto-s3-file-systems-plugins)
+  by adding environment variable in docker Flink services.
+  See [Using Filesystem Plugins](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/resource-providers/standalone/docker/#using-filesystem-plugins)
+  for more details.
+  ```yaml
+    environment:
+      - ENABLE_BUILT_IN_PLUGINS=flink-s3-fs-hadoop-1.15.1.jar
+  ```
+
+### MinIO
 
 MinIO serves as S3 replacement in docker environment. To make the framework work properly with MinIO, a few adjustments
 have been made.
@@ -50,3 +67,7 @@ have been made.
   s3.access-key: flink-sql-runner
   s3.secret-key: secretkey
   ```
+  See [Configure Access Credentials](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/filesystems/s3/#configure-access-credentials)
+  ,
+  [Configure Non-S3 Endpoint](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/filesystems/s3/#configure-access-credentials)
+  and [Configure Path Style Access](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/filesystems/s3/#configure-path-style-access).
