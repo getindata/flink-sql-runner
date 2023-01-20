@@ -130,7 +130,7 @@ FROM
     {TEMPORARY_INPUT_VIEW_NAME}
 ;"""
 
-logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n{args.query}\n\n")
+logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}.\n")
 table_env.create_temporary_view(TEMPORARY_INPUT_VIEW_NAME, execution_output)
 
 logging.info(f"Running generated insert query:\n{load_query}")
