@@ -66,13 +66,14 @@ stream_env = StreamExecutionEnvironment.get_execution_environment()
 table_env = StreamTableEnvironment.create(stream_env)
 
 sql_paths = args.table_definition_path
+template_params = args.template_params if args.template_params else []
 
 table_definitions_params = {
     # Each job should have a unique Kafka group.id.
-    'group_id': f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
+    "group_id": f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
 }
 
-for template_param in args.template_params:
+for template_param in template_params:
     parts = template_param.strip().split("=", 2)
     table_definitions_params[parts[0].strip()] = parts[1].strip()
 
