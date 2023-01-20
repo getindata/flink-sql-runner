@@ -17,7 +17,7 @@ TEMPORARY_INPUT_VIEW_NAME = "__temporary_input_view"
 def execute_table_definitions(definitions: List[str], params: Dict[str, Any]) -> None:
     for definition in definitions:
         definition = definition.format(**params)
-        logging.info("Executing DDL: \n" + definition + "\n\n")
+        logging.info(f"Executing DDL: \n{definition}\n\n")
         t_env.execute_sql(definition)
 
 
@@ -26,25 +26,39 @@ parser.add_argument(
     "--table-definition-path", nargs="+", required=True, help="Path to flink table DDL. Can be path to a file or s3"
 )
 parser.add_argument("--query", "-q", required=True, help="SQL query to execute.")
-parser.add_argument("--target-table", "-tt", required=True, help="Target table where to write results of the query.")
-parser.add_argument("--metadata-query-name", "-qname", required=True, help="Human readable SQL query name.")
-parser.add_argument("--metadata-query-description", "-qdesc", required=True, help="SQL query description.")
-parser.add_argument("--metadata-query-id", "-qid", required=True, help="Unique SQL query id.")
+parser.add_argument("--target-table", "-tt", required=False, help="Target table where to write results of the query.")
+parser.add_argument("--metadata-query-name", "-qname", required=False, help="Human readable SQL query name.")
+parser.add_argument("--metadata-query-description", "-qdesc", required=False, help="SQL query description.")
+parser.add_argument("--metadata-query-id", "-qid", required=False, help="Unique SQL query id.")
 parser.add_argument(
     "--metadata-query-version",
     "-qv",
     type=int,
-    required=True,
+    required=False,
     help="SQL query version, monotonously increasing, starts from 1.",
 )
 parser.add_argument(
-    "--metadata-query-create-timestamp", "-qtime", required=True, help="When has the SQL query been deployed."
+    "--metadata-query-create-timestamp", "-qtime", required=False, help="When has the SQL query been deployed."
 )
 parser.add_argument(
     "--template-params",
     required=False,
     nargs="+",
-    help="Extra parameters that will be used when resolving template variables. Each should have form 'key=value'",
+    help="Extra parameters that will be used when resolving template variables. Each should have form 'key=value'.",
+)
+parser.add_argument(
+    "--timestamp-field-name",
+    required=False,
+    type=str,
+    default="__create_timestamp",
+    help="The name of the field containing the creation of the event.",
+)
+parser.add_argument(
+    "--include-query-metadata",
+    required=False,
+    action="store_true",
+    default=True,
+    help="Indicates whether '__query_*' metadata fields should be added to the result.",
 )
 
 args = parser.parse_args(sys.argv[1:])
@@ -76,22 +90,30 @@ for path in sql_paths:
         with open(path, "r") as file:
             execute_table_definitions(sqlparse.split(file.read()), table_definitions_params)
 
+result_fields = ["*"]
+if args.timestamp_field_name:
+    result_fields.append(f"NOW() AS {args.timestamp_field_name}")
+if args.include_query_metadata:
+    result_fields.extend(
+        [
+            f"CAST('{args.metadata_query_name}' AS STRING) AS __query_name",
+            f"CAST('{args.metadata_query_description}' AS STRING) AS __query_description",
+            f"CAST('{args.metadata_query_id}' AS STRING) AS __query_id",
+            f"CAST({args.metadata_query_version} AS INT) AS __query_version",
+            f"CAST('{args.metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp",
+        ]
+    )
+
 load_query = f"""INSERT INTO {args.target_table}
 SELECT
-    *,
-    NOW() AS __create_timestamp,
-    CAST('{args.metadata_query_name}' AS STRING) AS __query_name,
-    CAST('{args.metadata_query_description}' AS STRING) AS __query_description,
-    CAST('{args.metadata_query_id}' AS STRING) AS __query_id,
-    CAST({args.metadata_query_version} AS INT) AS __query_version,
-    CAST('{args.metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp
+{"    ,".join(result_fields)}
 FROM
     {TEMPORARY_INPUT_VIEW_NAME}
 ;"""
 
-logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n" + args.query + "\n\n")
+logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n{args.query}\n\n")
 table = t_env.sql_query(args.query)
 t_env.create_temporary_view(TEMPORARY_INPUT_VIEW_NAME, table)
 
-logging.info("Running generated insert query: \n" + load_query)
+logging.info(f"Running generated insert query:\n{load_query}")
 t_env.execute_sql(load_query)
