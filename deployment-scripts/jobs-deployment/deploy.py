@@ -102,4 +102,5 @@ if __name__ == "__main__":
                 flink_cli_runner,
                 jinja_template_resolver,
                 passthrough_args,
+                args.jobmanager_address,
             ).run()

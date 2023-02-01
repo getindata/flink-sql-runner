@@ -4,11 +4,13 @@ import copy
 import datetime
 import logging
 import os.path
+import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
+from cmd_utils import run_cmd
 
 from flink_clients import FlinkCli, FlinkYarnRunner, FlinkStandaloneClusterRunner
 from job_configuration import JobConfiguration
@@ -75,6 +77,7 @@ class EmrJobRunner(object):
         flink_cli_runner: FlinkCli,
         jinja_template_resolver: JinjaTemplateResolver,
         passthrough_args: List[str],
+        jobmanager_address: str,
     ):
         self.job_config_path = job_config_path
         self.pyflink_runner_dir = pyflink_runner_dir
@@ -86,41 +89,43 @@ class EmrJobRunner(object):
         self.flink_cli_runner = flink_cli_runner
         self.jinja_template_resolver = jinja_template_resolver
         self.passthrough_args = passthrough_args
+        self.new_job_conf = JobConfiguration(self.__read_config(job_config_path))
+        self.jobmanager_address = jobmanager_address
 
     def run(self) -> None:
-        new_job_conf = JobConfiguration(self.__read_config(self.job_config_path))
-        logging.info(f"Deploying '{new_job_conf.get_name()}'.")
-        if new_job_conf.is_sql():
-            logging.info(f"Deploying query: |{new_job_conf.get_sql()}|")
+        #new_job_conf = JobConfiguration(self.__read_config(self.job_config_path))
+        logging.info(f"Deploying '{self.new_job_conf.get_name()}'.")
+        if self.new_job_conf.is_sql():
+            logging.info(f"Deploying query: |{self.new_job_conf.get_sql()}|")
         else:
-            logging.info(f"Deploying code:\n{new_job_conf.get_code()}")
+            logging.info(f"Deploying code:\n{self.new_job_conf.get_code()}")
 
         external_config = self.__fetch_job_manifest(
-            self.external_job_config_bucket, self.external_job_config_prefix, new_job_conf.get_name()
+            self.external_job_config_bucket, self.external_job_config_prefix, self.new_job_conf.get_name()
         )
         logging.info(f"External config:\n{external_config}")
 
         if not external_config:
             # The job manifest did not exist. Starting a newly created job.
             self.__start_new_job(new_job_conf)
-            self.__upload_job_manifest(new_job_conf)
-        elif external_config and not self.__has_job_manifest_changed(external_config, new_job_conf):
+            self.__upload_job_manifest(self.new_job_conf)
+        elif external_config and not self.__has_job_manifest_changed(external_config, self.new_job_conf):
             # The job manifest has not been modified. There is no need to restart the job. Just ensure it's running.
-            if self.__is_job_running(new_job_conf.get_name()):
+            if self.__is_job_running(self.new_job_conf.get_name()):
                 logging.info("Job manifest has not changed. Skipping job restart.")
             else:
-                self.__start_job_with_unchanged_query(external_config, new_job_conf)
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
         else:
             # The job manifest has been modified. Job needs to be restarted.
-            if self.__is_job_running(new_job_conf.get_name()):
+            if self.__is_job_running(self.new_job_conf.get_name()):
                 # Stop the job using the old config (query-version in particular).
                 self.__stop_with_savepoint(external_config)
 
-            if external_config and not self.__has_job_definition_changed(external_config, new_job_conf):
-                self.__start_job_with_unchanged_query(external_config, new_job_conf)
+            if external_config and not self.__has_job_definition_changed(external_config, self.new_job_conf):
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
             else:
-                self.__start_new_job_with_changed_query(external_config, new_job_conf)
-            self.__upload_job_manifest(new_job_conf)
+                self.__start_new_job_with_changed_query(external_config, self.new_job_conf)
+            self.__upload_job_manifest(self.new_job_conf)
 
     @staticmethod
     def __read_config(config_file: str):
@@ -216,8 +221,26 @@ class EmrJobRunner(object):
             job_arguments=job_arguments,
             savepoint_path=savepoint_path,
         )
+        self._ensure_job_is_running()
 
-    def _get_flink_properties(self, job_conf: JobConfiguration) -> Dict[str, Any]:
+    def _ensure_job_is_running(self):
+        for check_index in range(5):
+            logging.info(f"Checking the state of the job: " + str(check_index))
+            status = self._get_job_status()
+            if not (status == "RUNNING" or status == "CREATED"):
+                raise RuntimeError(f"Unexpected job state. Recent status {status}.")
+            time.sleep(0.5)
+        pass
+
+    def _get_job_status(self):
+        _, job_status, _ = run_cmd(
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{self.new_job_conf.get_name()}" | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            throw_on_error=True,
+        )
+        return job_status
+
+    @staticmethod
+    def _get_flink_properties(job_conf: JobConfiguration) -> Dict[str, Any]:
         # We need to append query version to checkpoint and savepoint path, but we don't want to modify the manifest.
         cloned_conf = JobConfiguration(copy.deepcopy(job_conf.job_definition))
         cloned_conf.set_flink_checkpoints_dir(
@@ -336,4 +359,5 @@ if __name__ == "__main__":
         flink_cli_runner,
         jinja_template_resolver,
         passthrough_args,
+        args.jobmanager_address,
     ).run()
