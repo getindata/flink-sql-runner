@@ -122,32 +122,22 @@ class EmrJobRunner(object):
             # The job manifest did not exist. Starting a newly created job.
             self.__start_new_job(self.new_job_conf)
             self.__upload_job_manifest(self.new_job_conf)
-        elif external_config and not self.__has_job_manifest_changed(
-            external_config, self.new_job_conf
-        ):
+        elif external_config and not self.__has_job_manifest_changed(external_config, self.new_job_conf):
             # The job manifest has not been modified. There is no need to restart the job. Just ensure it's running.
             if self.__is_job_running(self.new_job_conf.get_name()):
                 logging.info("Job manifest has not changed. Skipping job restart.")
             else:
-                self.__start_job_with_unchanged_query(
-                    external_config, self.new_job_conf
-                )
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
         else:
             # The job manifest has been modified. Job needs to be restarted.
             if self.__is_job_running(self.new_job_conf.get_name()):
                 # Stop the job using the old config (query-version in particular).
                 self.__stop_with_savepoint(external_config)
 
-            if external_config and not self.__has_job_definition_changed(
-                external_config, self.new_job_conf
-            ):
-                self.__start_job_with_unchanged_query(
-                    external_config, self.new_job_conf
-                )
+            if external_config and not self.__has_job_definition_changed(external_config, self.new_job_conf):
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
             else:
-                self.__start_new_job_with_changed_query(
-                    external_config, self.new_job_conf
-                )
+                self.__start_new_job_with_changed_query(external_config, self.new_job_conf)
             self.__upload_job_manifest(self.new_job_conf)
 
     @staticmethod
@@ -161,47 +151,31 @@ class EmrJobRunner(object):
     def __start_new_job(self, job_conf):
         job_conf.set_meta_query_version(1)
         job_conf.set_meta_query_id(str(uuid.uuid1()))
-        job_conf.set_meta_query_create_timestamp(
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
+        job_conf.set_meta_query_create_timestamp(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.__start_with_clean_state(job_conf)
 
     def __start_job_with_unchanged_query(self, external_config, job_conf):
         job_conf.set_meta_query_version(external_config.get_meta_query_version())
         job_conf.set_meta_query_id(external_config.get_meta_query_id())
-        job_conf.set_meta_query_create_timestamp(
-            external_config.get_meta_query_create_timestamp()
-        )
+        job_conf.set_meta_query_create_timestamp(external_config.get_meta_query_create_timestamp())
         self.__start_with_state(job_conf)
 
     def __start_new_job_with_changed_query(self, external_config, job_conf):
         job_conf.set_meta_query_version(external_config.get_meta_query_version() + 1)
         job_conf.set_meta_query_id(str(uuid.uuid1()))
-        job_conf.set_meta_query_create_timestamp(
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
+        job_conf.set_meta_query_create_timestamp(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.__start_with_clean_state(job_conf)
 
     def __upload_job_manifest(self, job_conf):
-        upload_path = os.path.join(
-            self.external_job_config_prefix, f"{job_conf.get_name()}.yaml"
-        )
-        logging.info(
-            f"Uploading the new config file to 's3://{self.external_job_config_bucket}/{upload_path}'."
-        )
-        upload_content(
-            yaml.dump(job_conf.to_dict()), self.external_job_config_bucket, upload_path
-        )
+        upload_path = os.path.join(self.external_job_config_prefix, f"{job_conf.get_name()}.yaml")
+        logging.info(f"Uploading the new config file to 's3://{self.external_job_config_bucket}/{upload_path}'.")
+        upload_content(yaml.dump(job_conf.to_dict()), self.external_job_config_bucket, upload_path)
         logging.info("The config file has been uploaded.")
 
     def __stop_with_savepoint(self, job_conf: JobConfiguration) -> None:
         job_id = self.flink_cli_runner.get_job_id(job_conf.get_name())
-        savepoint_path = os.path.join(
-            job_conf.get_flink_savepoints_dir(), job_conf.get_meta_query_version_str()
-        )
-        logging.info(
-            f"Stopping job {job_conf.get_name()} with savepoint at '{savepoint_path}'."
-        )
+        savepoint_path = os.path.join(job_conf.get_flink_savepoints_dir(), job_conf.get_meta_query_version_str())
+        logging.info(f"Stopping job {job_conf.get_name()} with savepoint at '{savepoint_path}'.")
         self.flink_cli_runner.stop_with_savepoint(job_id, savepoint_path)
 
     def __start_with_clean_state(self, job_conf: JobConfiguration) -> None:
@@ -210,33 +184,21 @@ class EmrJobRunner(object):
 
     def __start_with_state(self, job_conf: JobConfiguration) -> None:
         # Find the latest savepoint if any.
-        savepoint_base_path = os.path.join(
-            job_conf.get_flink_savepoints_dir(), job_conf.get_meta_query_version_str()
-        )
+        savepoint_base_path = os.path.join(job_conf.get_flink_savepoints_dir(), job_conf.get_meta_query_version_str())
         latest_savepoint = self.__find_latest_savepoint(savepoint_base_path)
 
         # Find the latest checkpoint if any.
-        checkpoint_base_path = os.path.join(
-            job_conf.get_flink_checkpoints_dir(), job_conf.get_meta_query_version_str()
-        )
+        checkpoint_base_path = os.path.join(job_conf.get_flink_checkpoints_dir(), job_conf.get_meta_query_version_str())
         latest_checkpoint = self.__find_latest_checkpoint(checkpoint_base_path)
 
         # Run the latest saved state.
         if latest_savepoint is None and latest_checkpoint is None:
-            raise RuntimeError(
-                f"Unexpected state. No checkpoint or savepoint found for {job_conf.get_name()}."
-            )
-        if latest_checkpoint is not None and (
-            latest_savepoint is None or latest_checkpoint[1] > latest_savepoint[1]
-        ):
-            logging.info(
-                f"Starting job {job_conf.get_name()} from checkpoint {latest_checkpoint[0]}."
-            )
+            raise RuntimeError(f"Unexpected state. No checkpoint or savepoint found for {job_conf.get_name()}.")
+        if latest_checkpoint is not None and (latest_savepoint is None or latest_checkpoint[1] > latest_savepoint[1]):
+            logging.info(f"Starting job {job_conf.get_name()} from checkpoint {latest_checkpoint[0]}.")
             self.__start(job_conf, savepoint_path=latest_checkpoint[0])
         else:
-            logging.info(
-                f"Starting job {job_conf.get_name()} from savepoint {latest_savepoint[0]}."
-            )
+            logging.info(f"Starting job {job_conf.get_name()} from savepoint {latest_savepoint[0]}.")
             self.__start(job_conf, savepoint_path=latest_savepoint[0])
 
     def __start(self, job_conf: JobConfiguration, savepoint_path=None):
@@ -272,9 +234,7 @@ class EmrJobRunner(object):
             job_arguments=job_arguments,
             savepoint_path=savepoint_path,
         )
-        logging.info(
-            f"Ensuring that the job {job_conf.get_name()} does not fail shortly after being run."
-        )
+        logging.info(f"Ensuring that the job {job_conf.get_name()} does not fail shortly after being run.")
         self.flink_cli_runner.ensure_job_is_running(job_conf.get_name())
 
     @staticmethod
@@ -305,9 +265,7 @@ class EmrJobRunner(object):
         )
         return output_file_path
 
-    def __find_latest_savepoint(
-        self, savepoint_base_path: str
-    ) -> Optional[Tuple[str, datetime.datetime]]:
+    def __find_latest_savepoint(self, savepoint_base_path: str) -> Optional[Tuple[str, datetime.datetime]]:
         # Each job instance keeps savepoints in a separate location. Savepoints DO NOT have increasing numbers assigned.
         # Sample path:
         #   base-location/savepoints/sample-query/1/savepoint-5c9ee3-8575306fd774/_metadata
@@ -322,9 +280,7 @@ class EmrJobRunner(object):
         prefix = url_parts[3]
         return self.__find_latest_state_internal(bucket_name, prefix)
 
-    def __find_latest_checkpoint(
-        self, checkpoint_base_path: str
-    ) -> Optional[Tuple[str, datetime.datetime]]:
+    def __find_latest_checkpoint(self, checkpoint_base_path: str) -> Optional[Tuple[str, datetime.datetime]]:
         # Each job instance keeps checkpoint in a separate location. Checkpoints have increasing numbers assigned.
         # Sample path:
         #   base-location/checkpoints/sample-query/1/aa18345e22b4b5c0e49051d1369bd24f/chk-19973/_metadata
@@ -342,9 +298,7 @@ class EmrJobRunner(object):
     def __find_latest_state_internal(
         self, state_bucket: str, state_prefix: str
     ) -> Optional[Tuple[str, datetime.datetime]]:
-        last_created = get_latest_object(
-            state_bucket, state_prefix, lambda k: k.endswith("_metadata")
-        )
+        last_created = get_latest_object(state_bucket, state_prefix, lambda k: k.endswith("_metadata"))
         if last_created is None:
             logging.info(f"No state found at '{state_prefix}'.")
             return None
@@ -356,45 +310,31 @@ class EmrJobRunner(object):
             logging.info(f"State found at '{state_path}'.")
             return state_path, last_created_ts
 
-    def __fetch_job_manifest(
-        self, bucket_name: str, prefix: str, job_name: str
-    ) -> Optional[JobConfiguration]:
+    def __fetch_job_manifest(self, bucket_name: str, prefix: str, job_name: str) -> Optional[JobConfiguration]:
         object_key = os.path.join(prefix, f"{job_name}.yaml")
         logging.info(f"Looking for config at s3://{bucket_name}/{object_key}.")
         raw_manifest = get_content(bucket_name, object_key)
         return JobConfiguration(yaml.safe_load(raw_manifest)) if raw_manifest else None
 
-    def __has_job_manifest_changed(
-        self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration
-    ) -> bool:
-        return self.__has_job_definition_changed(
+    def __has_job_manifest_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
+        return self.__has_job_definition_changed(old_job_conf, new_job_conf) or self.__have_flink_properties_changed(
             old_job_conf, new_job_conf
-        ) or self.__have_flink_properties_changed(old_job_conf, new_job_conf)
-
-    def __have_flink_properties_changed(
-        self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration
-    ) -> bool:
-        has_changed = (
-            old_job_conf.get_flink_properties() != new_job_conf.get_flink_properties()
         )
+
+    def __have_flink_properties_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
+        has_changed = old_job_conf.get_flink_properties() != new_job_conf.get_flink_properties()
         logging.info(f"Have Flink properties changed? {has_changed}")
         return has_changed
 
-    def __has_job_definition_changed(
-        self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration
-    ) -> bool:
+    def __has_job_definition_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
         """
         Check whether the job definition, either Flink SQL or Flink code block, has changed.
         :param old_job_conf: The job definition already deployed.
         :param new_job_conf: The job definition to be deployed.
         :return: 'True' if the job definition has changed.
         """
-        old_definition = (
-            old_job_conf.get_sql() if old_job_conf.is_sql() else old_job_conf.get_code()
-        )
-        new_definition = (
-            new_job_conf.get_sql() if new_job_conf.is_sql() else new_job_conf.get_code()
-        )
+        old_definition = old_job_conf.get_sql() if old_job_conf.is_sql() else old_job_conf.get_code()
+        new_definition = new_job_conf.get_sql() if new_job_conf.is_sql() else new_job_conf.get_code()
         has_changed = old_definition != new_definition
         logging.info(f"OLD:\n{old_definition}")
         logging.info(f"NEW:\n{new_definition}")
@@ -409,9 +349,7 @@ class EmrJobRunner(object):
 if __name__ == "__main__":
     args, passthrough_args = parse_args()
     flink_cli_runner = (
-        FlinkYarnRunner()
-        if args.deployment_target == "yarn"
-        else FlinkStandaloneClusterRunner(args.jobmanager_address)
+        FlinkYarnRunner() if args.deployment_target == "yarn" else FlinkStandaloneClusterRunner(args.jobmanager_address)
     )
     jinja_template_resolver = JinjaTemplateResolver()
 

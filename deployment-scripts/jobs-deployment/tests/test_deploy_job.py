@@ -54,9 +54,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         # then
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
         self.flink_cli_runner.start.assert_called_once()
-        self.assert_that_call_argument_equals(
-            self.flink_cli_runner.start, "savepoint_path", None
-        )
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
 
     @mock_s3
     def test_should_not_restart_sql_job_if_manifest_has_not_changed(self):
@@ -124,15 +122,9 @@ class TestEmrFlinkRunner(unittest.TestCase):
     def test_should_start_stopped_sql_job_with_latest_checkpoint(self):
         # given: a S3 bucket for state
         self._create_s3_bucket_for_flink_data()
-        self._put_state_to_s3(
-            f"checkpoints/{self.TEST_JOB_NAME}/2/aa18345e22b4b5c0e49051d1369bd24f/chk-123"
-        )
-        self._put_state_to_s3(
-            f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/"
-        )
-        self._put_state_to_s3(
-            f"checkpoints/{self.TEST_JOB_NAME}/2/aa18345e22b4b5c0e49051d1369bd24f/chk-124"
-        )
+        self._put_state_to_s3(f"checkpoints/{self.TEST_JOB_NAME}/2/aa18345e22b4b5c0e49051d1369bd24f/chk-123")
+        self._put_state_to_s3(f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/")
+        self._put_state_to_s3(f"checkpoints/{self.TEST_JOB_NAME}/2/aa18345e22b4b5c0e49051d1369bd24f/chk-124")
 
         # and: FlinkCliRunner mock
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
@@ -198,9 +190,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running.assert_called_with(self.TEST_JOB_NAME)
         self.flink_cli_runner.stop_with_savepoint.assert_called_once()
         self.flink_cli_runner.start.assert_called_once()
-        self.assert_that_call_argument_equals(
-            self.flink_cli_runner.start, "savepoint_path", None
-        )
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
         job_manifest_in_s3 = self._load_manifest_from_s3()
         self.assertEqual(3, job_manifest_in_s3.get_meta_query_version())
 
@@ -227,9 +217,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
         self.flink_cli_runner.start.assert_called_once()
         self.jinja_template_resolver.resolve.assert_called_once()
-        self.assert_that_call_argument_equals(
-            self.flink_cli_runner.start, "savepoint_path", None
-        )
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
         self.assert_that_list_call_argument_contains(
             self.flink_cli_runner.start,
             "python_flink_params",
@@ -286,9 +274,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
         self.assertEqual(5, self.flink_cli_runner.get_job_status.call_count)
         self.flink_cli_runner.start.assert_called_once()
-        self.assert_that_call_argument_equals(
-            self.flink_cli_runner.start, "savepoint_path", None
-        )
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
 
     def _create_s3_bucket_for_flink_data(self):
         self.s3 = boto3.resource("s3", region_name="us-east-1")
@@ -364,12 +350,8 @@ class TestEmrFlinkRunner(unittest.TestCase):
             .with_meta_query_version(2)
             .with_meta_query_id("e080791a-80e7-43a6-9966-4d6dd0786543")
             .with_meta_query_create_timestamp("2022-11-23T11:36:11.434123")
-            .with_flink_savepoints_dir(
-                f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/"
-            )
-            .with_flink_checkpoints_dir(
-                f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/"
-            )
+            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/")
+            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/")
         )
 
     def a_valid_code_job_manifest(self) -> "JobConfigurationBuilder":
@@ -388,10 +370,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
             .with_meta_query_version(2)
             .with_meta_query_id("e080791a-80e7-43a6-9966-4d6dd0786543")
             .with_meta_query_create_timestamp("2022-11-23T11:36:11.434123")
-            .with_flink_savepoints_dir(
-                f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/"
-            )
-            .with_flink_checkpoints_dir(
-                f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/"
-            )
+            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/")
+            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/")
         )

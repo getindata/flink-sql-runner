@@ -82,11 +82,7 @@ class FlinkYarnRunner(FlinkCli):
         session_app_id: str = None,
         session_cluster_name: str = "Flink session cluster",
     ):
-        self.session_app_id = (
-            session_app_id
-            if session_app_id is not None
-            else self.__get_session_app_id()
-        )
+        self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
         self.session_cluster_name = session_cluster_name
 
     def get_job_status(self, job_name: str) -> str:
