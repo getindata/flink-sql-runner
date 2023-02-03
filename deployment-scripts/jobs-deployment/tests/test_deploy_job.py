@@ -1,5 +1,6 @@
 import logging
 import os.path
+import sys
 import tempfile
 import unittest
 from typing import Optional
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
+sys.path.insert(0, "../")
 from deploy_job import EmrJobRunner, JinjaTemplateResolver
 from flink_clients import FlinkYarnRunner
 from job_configuration import JobConfiguration, JobConfigurationBuilder
