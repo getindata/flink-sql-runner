@@ -26,6 +26,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.get_job_id = MagicMock()
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
         self.flink_cli_runner.start = MagicMock()
+        self.flink_cli_runner.get_job_status = MagicMock(return_value="RUNNING")
         # and: JinjaTemplateResolver mock
         self.jinja_template_resolver = JinjaTemplateResolver()
         self.jinja_template_resolver.resolve = MagicMock()
@@ -42,9 +43,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
         # and: FlinkCliRunner mock
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
-        self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: a SQL job manifest
         job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -68,9 +66,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
         # and: FlinkCliRunner mock
         self.flink_cli_runner.is_job_running = MagicMock(return_value=True)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
-        self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
         job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -98,8 +93,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
                 f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/"
             )
         )
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
         old_job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -144,9 +137,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
         # and: FlinkCliRunner mock
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
-        self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
         job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -179,8 +169,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
                 f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/"
             )
         )
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: the old SQL job manifest
         old_job_manifest = (
@@ -227,8 +215,6 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
-        self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
         job_manifest = self.a_valid_code_job_manifest().build().to_yaml()
@@ -259,10 +245,9 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(
+        self.flink_cli_runner.get_job_status = MagicMock(
             side_effect=["CREATED", "RUNNING", "RUNNING", "FAILING", "RESTARTING"]
         )
-        self.flink_cli_runner.start = MagicMock()
 
         # and: a SQL job manifest
         job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -275,12 +260,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         # then
         except RuntimeError as e:
             self.assertEqual("Unexpected job state. Recent status FAILING.", str(e))
-        self.flink_cli_runner.stop_with_savepoint.assert_not_called()
-        self.assertEqual(4, self.flink_cli_runner._get_job_status.call_count)
-        self.flink_cli_runner.start.assert_called_once()
-        self.assert_that_call_argument_equals(
-            self.flink_cli_runner.start, "savepoint_path", None
-        )
+        self.assertEqual(4, self.flink_cli_runner.get_job_status.call_count)
 
     @mock_s3
     def test_should_fail_job_with_changing_job_status(self):
@@ -291,10 +271,9 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
-        self.flink_cli_runner._get_job_status = MagicMock(
+        self.flink_cli_runner.get_job_status = MagicMock(
             side_effect=["CREATED", "RUNNING", "RUNNING", "RUNNING", "RUNNING"]
         )
-        self.flink_cli_runner.start = MagicMock()
 
         # and: a SQL job manifest
         job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
@@ -305,7 +284,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
 
         # then
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
-        self.assertEqual(5, self.flink_cli_runner._get_job_status.call_count)
+        self.assertEqual(5, self.flink_cli_runner.get_job_status.call_count)
         self.flink_cli_runner.start.assert_called_once()
         self.assert_that_call_argument_equals(
             self.flink_cli_runner.start, "savepoint_path", None

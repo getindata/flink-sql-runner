@@ -8,7 +8,7 @@ from cmd_utils import run_cmd
 
 class FlinkCli(ABC):
     JOB_RUNNING_CHECK_RETRIES_COUNT = 5
-    JOB_RUNNING_CHECK_RETRIES_TIMEOUT = 0.2
+    JOB_RUNNING_CHECK_RETRIES_TIMEOUT = 2
 
     def ensure_job_is_running(self, job_name: str) -> None:
         """
@@ -16,17 +16,16 @@ class FlinkCli(ABC):
         :param job_name: Flink job name
         """
         for check_index in range(self.JOB_RUNNING_CHECK_RETRIES_COUNT):
-            logging.info(f"Checking the state of the job: " + str(check_index))
-            status = self._get_job_status(job_name)
-            if not (status == "RUNNING" or status == "CREATED"):
+            logging.info(f"Checking the state of the job: {check_index}")
+            status = self.get_job_status(job_name)
+            if status not in ["RUNNING", "CREATED"]:
                 raise RuntimeError(f"Unexpected job state. Recent status {status}.")
             time.sleep(self.JOB_RUNNING_CHECK_RETRIES_TIMEOUT)
-        pass
 
     @abstractmethod
-    def _get_job_status(self, job_name: str) -> str:
+    def get_job_status(self, job_name: str) -> str:
         """
-        Gets the status of a Flink job. Executes `flink list` command and truncates output to retrieve the status.
+        Gets the status of a Flink job.
         :param job_name: Flink job name
         :return: Status of a Flink job
         """
@@ -90,7 +89,7 @@ class FlinkYarnRunner(FlinkCli):
         )
         self.session_cluster_name = session_cluster_name
 
-    def _get_job_status(self, job_name: str) -> str:
+    def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
             f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
@@ -167,7 +166,7 @@ class FlinkStandaloneClusterRunner(FlinkCli):
     def __init__(self, jobmanager_address: str):
         self.jobmanager_address = jobmanager_address
 
-    def _get_job_status(self, job_name: str) -> str:
+    def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
             f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
