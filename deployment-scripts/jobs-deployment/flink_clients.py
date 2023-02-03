@@ -7,8 +7,8 @@ from cmd_utils import run_cmd
 
 
 class FlinkCli(ABC):
-    JOB_RUNNING_CHECK_RETRIES_COUNT = 5
-    JOB_RUNNING_CHECK_RETRIES_TIMEOUT = 2
+    JOB_RUNNING_CHECK_RETRIES_COUNT = 10
+    JOB_RUNNING_CHECK_RETRIES_TIMEOUT = 3
 
     def ensure_job_is_running(self, job_name: str) -> None:
         """
