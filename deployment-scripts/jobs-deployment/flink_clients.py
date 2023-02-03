@@ -56,11 +56,11 @@ class FlinkCli(ABC):
 
     @abstractmethod
     def start(
-            self,
-            flink_properties: Dict[str, Any],
-            python_flink_params: List[str],
-            job_arguments: List[str],
-            savepoint_path: str = None,
+        self,
+        flink_properties: Dict[str, Any],
+        python_flink_params: List[str],
+        job_arguments: List[str],
+        savepoint_path: str = None,
     ) -> None:
         """
         Starts Flink job.
@@ -78,8 +78,16 @@ class FlinkYarnRunner(FlinkCli):
     A Python wrapper for Flink Command-Line Interface. YARN is the deployment target.
     """
 
-    def __init__(self, session_app_id: str = None, session_cluster_name: str = "Flink session cluster"):
-        self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
+    def __init__(
+        self,
+        session_app_id: str = None,
+        session_cluster_name: str = "Flink session cluster",
+    ):
+        self.session_app_id = (
+            session_app_id
+            if session_app_id is not None
+            else self.__get_session_app_id()
+        )
         self.session_cluster_name = session_cluster_name
 
     def _get_job_status(self, job_name: str) -> str:
@@ -97,7 +105,8 @@ class FlinkYarnRunner(FlinkCli):
         :return: YARN applicationId
         """
         _, output, _ = run_cmd(
-            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """, throw_on_error=True
+            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,
+            throw_on_error=True,
         )
         yarn_application_id = output.strip()
         if yarn_application_id:
@@ -131,11 +140,11 @@ class FlinkYarnRunner(FlinkCli):
         )
 
     def start(
-            self,
-            flink_properties: Dict[str, Any],
-            python_flink_params: List[str],
-            job_arguments: List[str],
-            savepoint_path: str = None,
+        self,
+        flink_properties: Dict[str, Any],
+        python_flink_params: List[str],
+        job_arguments: List[str],
+        savepoint_path: str = None,
     ) -> None:
         run_cmd(
             f"""flink run \
@@ -167,7 +176,8 @@ class FlinkStandaloneClusterRunner(FlinkCli):
 
     def is_job_running(self, job_name: str) -> bool:
         _, output, _ = run_cmd(
-            f"""flink list --jobmanager "{self.jobmanager_address}" | grep {job_name} | wc -l """, throw_on_error=True
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep {job_name} | wc -l """,
+            throw_on_error=True,
         )
         return "1" == output.strip()
 
@@ -188,11 +198,11 @@ class FlinkStandaloneClusterRunner(FlinkCli):
         )
 
     def start(
-            self,
-            flink_properties: Dict[str, Any],
-            python_flink_params: List[str],
-            job_arguments: List[str],
-            savepoint_path: str = None,
+        self,
+        flink_properties: Dict[str, Any],
+        python_flink_params: List[str],
+        job_arguments: List[str],
+        savepoint_path: str = None,
     ) -> None:
         run_cmd(
             f"""flink run \
