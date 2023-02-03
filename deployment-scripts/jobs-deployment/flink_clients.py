@@ -1,11 +1,36 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
+import time
 
 from cmd_utils import run_cmd
 
 
 class FlinkCli(ABC):
+    JOB_RUNNING_CHECK_RETRIES_COUNT = 10
+    JOB_RUNNING_CHECK_RETRIES_TIMEOUT = 3
+
+    def ensure_job_is_running(self, job_name: str) -> None:
+        """
+        Makes sure that a Flink job has status CREATED or RUNNING shortly after being run.
+        :param job_name: Flink job name
+        """
+        for check_index in range(self.JOB_RUNNING_CHECK_RETRIES_COUNT):
+            logging.info(f"Checking the state of the job: {check_index}")
+            status = self.get_job_status(job_name)
+            if status not in ["RUNNING", "CREATED"]:
+                raise RuntimeError(f"Unexpected job state. Recent status {status}.")
+            time.sleep(self.JOB_RUNNING_CHECK_RETRIES_TIMEOUT)
+
+    @abstractmethod
+    def get_job_status(self, job_name: str) -> str:
+        """
+        Gets the status of a Flink job.
+        :param job_name: Flink job name
+        :return: Status of a Flink job
+        """
+        pass
+
     @abstractmethod
     def is_job_running(self, job_name: str) -> bool:
         pass
@@ -52,9 +77,20 @@ class FlinkYarnRunner(FlinkCli):
     A Python wrapper for Flink Command-Line Interface. YARN is the deployment target.
     """
 
-    def __init__(self, session_app_id: str = None, session_cluster_name: str = "Flink session cluster"):
+    def __init__(
+        self,
+        session_app_id: str = None,
+        session_cluster_name: str = "Flink session cluster",
+    ):
         self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
         self.session_cluster_name = session_cluster_name
+
+    def get_job_status(self, job_name: str) -> str:
+        _, job_status, _ = run_cmd(
+            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            throw_on_error=True,
+        )
+        return job_status
 
     @staticmethod
     def __get_session_app_id() -> str:
@@ -64,7 +100,8 @@ class FlinkYarnRunner(FlinkCli):
         :return: YARN applicationId
         """
         _, output, _ = run_cmd(
-            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """, throw_on_error=True
+            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,
+            throw_on_error=True,
         )
         yarn_application_id = output.strip()
         if yarn_application_id:
@@ -125,9 +162,17 @@ class FlinkStandaloneClusterRunner(FlinkCli):
     def __init__(self, jobmanager_address: str):
         self.jobmanager_address = jobmanager_address
 
+    def get_job_status(self, job_name: str) -> str:
+        _, job_status, _ = run_cmd(
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            throw_on_error=True,
+        )
+        return job_status
+
     def is_job_running(self, job_name: str) -> bool:
         _, output, _ = run_cmd(
-            f"""flink list --jobmanager "{self.jobmanager_address}" | grep {job_name} | wc -l """, throw_on_error=True
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep {job_name} | wc -l """,
+            throw_on_error=True,
         )
         return "1" == output.strip()
 

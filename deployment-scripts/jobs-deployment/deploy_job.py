@@ -19,15 +19,25 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--job-config-path", required=True, help="Path to the new job configuration file.")
     parser.add_argument(
-        "--pyflink-runner-dir", required=True, help="Path to the directory containing PyFlink job runners."
+        "--job-config-path",
+        required=True,
+        help="Path to the new job configuration file.",
     )
     parser.add_argument(
-        "--external-job-config-bucket", required=True, help="S3 bucket where job configuration is stored."
+        "--pyflink-runner-dir",
+        required=True,
+        help="Path to the directory containing PyFlink job runners.",
     )
     parser.add_argument(
-        "--external-job-config-prefix", required=True, help="S3 prefix where job configuration is stored."
+        "--external-job-config-bucket",
+        required=True,
+        help="S3 bucket where job configuration is stored.",
+    )
+    parser.add_argument(
+        "--external-job-config-prefix",
+        required=True,
+        help="S3 prefix where job configuration is stored.",
     )
     parser.add_argument(
         "--table-definition-path",
@@ -54,7 +64,13 @@ def parse_args():
 
 
 class JinjaTemplateResolver(object):
-    def resolve(self, template_dir: str, template_file: str, vars: Dict[str, str], output_file_path: str) -> None:
+    def resolve(
+        self,
+        template_dir: str,
+        template_file: str,
+        vars: Dict[str, str],
+        output_file_path: str,
+    ) -> None:
         environment = Environment(loader=FileSystemLoader(template_dir))
         template = environment.get_template(template_file)
         content = template.render(**vars)
@@ -86,41 +102,43 @@ class EmrJobRunner(object):
         self.flink_cli_runner = flink_cli_runner
         self.jinja_template_resolver = jinja_template_resolver
         self.passthrough_args = passthrough_args
+        self.new_job_conf = JobConfiguration(self.__read_config(job_config_path))
 
     def run(self) -> None:
-        new_job_conf = JobConfiguration(self.__read_config(self.job_config_path))
-        logging.info(f"Deploying '{new_job_conf.get_name()}'.")
-        if new_job_conf.is_sql():
-            logging.info(f"Deploying query: |{new_job_conf.get_sql()}|")
+        logging.info(f"Deploying '{self.new_job_conf.get_name()}'.")
+        if self.new_job_conf.is_sql():
+            logging.info(f"Deploying query: |{self.new_job_conf.get_sql()}|")
         else:
-            logging.info(f"Deploying code:\n{new_job_conf.get_code()}")
+            logging.info(f"Deploying code:\n{self.new_job_conf.get_code()}")
 
         external_config = self.__fetch_job_manifest(
-            self.external_job_config_bucket, self.external_job_config_prefix, new_job_conf.get_name()
+            self.external_job_config_bucket,
+            self.external_job_config_prefix,
+            self.new_job_conf.get_name(),
         )
         logging.info(f"External config:\n{external_config}")
 
         if not external_config:
             # The job manifest did not exist. Starting a newly created job.
-            self.__start_new_job(new_job_conf)
-            self.__upload_job_manifest(new_job_conf)
-        elif external_config and not self.__has_job_manifest_changed(external_config, new_job_conf):
+            self.__start_new_job(self.new_job_conf)
+            self.__upload_job_manifest(self.new_job_conf)
+        elif external_config and not self.__has_job_manifest_changed(external_config, self.new_job_conf):
             # The job manifest has not been modified. There is no need to restart the job. Just ensure it's running.
-            if self.__is_job_running(new_job_conf.get_name()):
+            if self.__is_job_running(self.new_job_conf.get_name()):
                 logging.info("Job manifest has not changed. Skipping job restart.")
             else:
-                self.__start_job_with_unchanged_query(external_config, new_job_conf)
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
         else:
             # The job manifest has been modified. Job needs to be restarted.
-            if self.__is_job_running(new_job_conf.get_name()):
+            if self.__is_job_running(self.new_job_conf.get_name()):
                 # Stop the job using the old config (query-version in particular).
                 self.__stop_with_savepoint(external_config)
 
-            if external_config and not self.__has_job_definition_changed(external_config, new_job_conf):
-                self.__start_job_with_unchanged_query(external_config, new_job_conf)
+            if external_config and not self.__has_job_definition_changed(external_config, self.new_job_conf):
+                self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
             else:
-                self.__start_new_job_with_changed_query(external_config, new_job_conf)
-            self.__upload_job_manifest(new_job_conf)
+                self.__start_new_job_with_changed_query(external_config, self.new_job_conf)
+            self.__upload_job_manifest(self.new_job_conf)
 
     @staticmethod
     def __read_config(config_file: str):
@@ -216,15 +234,24 @@ class EmrJobRunner(object):
             job_arguments=job_arguments,
             savepoint_path=savepoint_path,
         )
+        logging.info(f"Ensuring that the job {job_conf.get_name()} does not fail shortly after being run.")
+        self.flink_cli_runner.ensure_job_is_running(job_conf.get_name())
 
-    def _get_flink_properties(self, job_conf: JobConfiguration) -> Dict[str, Any]:
+    @staticmethod
+    def _get_flink_properties(job_conf: JobConfiguration) -> Dict[str, Any]:
         # We need to append query version to checkpoint and savepoint path, but we don't want to modify the manifest.
         cloned_conf = JobConfiguration(copy.deepcopy(job_conf.job_definition))
         cloned_conf.set_flink_checkpoints_dir(
-            os.path.join(cloned_conf.get_flink_checkpoints_dir(), cloned_conf.get_meta_query_version_str())
+            os.path.join(
+                cloned_conf.get_flink_checkpoints_dir(),
+                cloned_conf.get_meta_query_version_str(),
+            )
         )
         cloned_conf.set_flink_savepoints_dir(
-            os.path.join(cloned_conf.get_flink_savepoints_dir(), cloned_conf.get_meta_query_version_str())
+            os.path.join(
+                cloned_conf.get_flink_savepoints_dir(),
+                cloned_conf.get_meta_query_version_str(),
+            )
         )
         return cloned_conf.get_flink_properties()
 
