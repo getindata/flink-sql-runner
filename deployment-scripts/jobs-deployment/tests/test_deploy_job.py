@@ -9,11 +9,12 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
+from test_s3_utils import put_object
+
 sys.path.insert(0, "../")
 from deploy_job import EmrJobRunner, JinjaTemplateResolver
 from flink_clients import FlinkYarnRunner
 from job_configuration import JobConfiguration, JobConfigurationBuilder
-from test_s3_utils import put_object
 
 logging.basicConfig(level=logging.INFO)
 
