@@ -9,11 +9,11 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
-sys.path.insert(0, "../")
+# sys.path.insert(0, "../")
 from deploy_job import EmrJobRunner, JinjaTemplateResolver
 from flink_clients import FlinkYarnRunner
 from job_configuration import JobConfiguration, JobConfigurationBuilder
-from .test_s3_utils import put_object
+from test_s3_utils import put_object
 
 logging.basicConfig(level=logging.INFO)
 
@@ -43,6 +43,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: a SQL job manifest
@@ -66,6 +67,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=True)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
@@ -94,6 +96,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
                 f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/"
             )
         )
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
@@ -134,6 +137,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
@@ -167,6 +171,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
                 f"savepoints/{self.TEST_JOB_NAME}/2/savepoint-438ed8-5a70b22243a2/"
             )
         )
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: the old SQL job manifest
@@ -210,6 +215,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(return_value="RUNNING")
         self.flink_cli_runner.start = MagicMock()
 
         # and: SQL job manifest
@@ -227,6 +233,60 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.assert_that_list_call_argument_contains(
             self.flink_cli_runner.start, "python_flink_params", f"--python /tmp/run-{self.TEST_JOB_NAME}.py"
         )
+
+    @mock_s3
+    def test_should_start_job_with_job_status_running_whole_time(self):
+        # given: an empty S3 bucket for state
+        self._create_s3_bucket_for_flink_data()
+
+        # and: FlinkCliRunner mock
+        self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
+        self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
+        self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(side_effect=["CREATED", "RUNNING", "RUNNING", "FAILING", "RESTARTING"])
+        self.flink_cli_runner.start = MagicMock()
+
+        # and: a SQL job manifest
+        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
+        config_file_path = self._write_to_local_file(job_manifest)
+
+        # when
+        try:
+            self._run_job(config_file_path)
+
+        # then
+        except RuntimeError as e:
+            self.assertEqual("Unexpected job state. Recent status FAILING.", str(e))
+        self.flink_cli_runner.stop_with_savepoint.assert_not_called()
+        self.assertEqual(4, self.flink_cli_runner._get_job_status.call_count)
+        self.flink_cli_runner.start.assert_called_once()
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
+
+    @mock_s3
+    def test_should_fail_job_with_changing_job_status(self):
+        # given: an empty S3 bucket for state
+        self._create_s3_bucket_for_flink_data()
+
+        # and: FlinkCliRunner mock
+        self.flink_cli_runner.is_job_running = MagicMock(return_value=False)
+        self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
+        self.flink_cli_runner.stop_with_savepoint = MagicMock()
+        self.flink_cli_runner._get_job_status = MagicMock(side_effect=["CREATED", "RUNNING", "RUNNING", "RUNNING", "RUNNING"])
+        self.flink_cli_runner.start = MagicMock()
+
+        # and: a SQL job manifest
+        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
+        config_file_path = self._write_to_local_file(job_manifest)
+
+        # when
+        self._run_job(config_file_path)
+
+        # then
+        self.flink_cli_runner.stop_with_savepoint.assert_not_called()
+        self.assertEqual(5, self.flink_cli_runner._get_job_status.call_count)
+        self.flink_cli_runner.start.assert_called_once()
+        self.assert_that_call_argument_equals(self.flink_cli_runner.start, "savepoint_path", None)
+
 
     def _create_s3_bucket_for_flink_data(self):
         self.s3 = boto3.resource("s3", region_name="us-east-1")
