@@ -12,9 +12,9 @@ from moto import mock_s3
 from .test_s3_utils import put_object
 
 sys.path.insert(0, "../")
-from deploy_job import EmrJobRunner, JinjaTemplateResolver
-from flink_clients import FlinkYarnRunner
-from job_configuration import JobConfiguration, JobConfigurationBuilder
+from deploy_job import EmrJobRunner, JinjaTemplateResolver  # noqa: 402
+from flink_clients import FlinkYarnRunner  # noqa: 402
+from job_configuration import JobConfiguration, JobConfigurationBuilder  # noqa: 402
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,7 +38,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
 
     @mock_s3
     def test_should_start_sql_job_with_clean_state_if_not_running_and_no_previous_state(
-        self,
+            self,
     ):
         # given: an empty S3 bucket for state
         self._create_s3_bucket_for_flink_data()
@@ -148,7 +148,8 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.assert_that_call_argument_equals(
             self.flink_cli_runner.start,
             "savepoint_path",
-            f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/2/aa18345e22b4b5c0e49051d1369bd24f/chk-124/",
+            f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/2/"
+            f"aa18345e22b4b5c0e49051d1369bd24f/chk-124/",
         )
 
     @mock_s3
@@ -199,7 +200,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
 
     @mock_s3
     def test_should_start_code_job_with_clean_state_if_not_running_and_no_previous_state(
-        self,
+            self,
     ):
         # given: an empty S3 bucket for state
         self._create_s3_bucket_for_flink_data()
@@ -316,7 +317,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
         return self.s3.Object(self.TEST_BUCKET_NAME, key).get()["Body"].read().decode()
 
     def assert_that_dict_call_argument_contains(
-        self, mock_object: MagicMock, argument_name: str, key: str, expected_value: str
+            self, mock_object: MagicMock, argument_name: str, key: str, expected_value: str
     ) -> None:
         call_args = mock_object.call_args[1]
         dict_argument_value = call_args[argument_name]
@@ -324,14 +325,14 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.assertEqual(expected_value, actual_value)
 
     def assert_that_list_call_argument_contains(
-        self, mock_object: MagicMock, argument_name: str, expected_value: str
+            self, mock_object: MagicMock, argument_name: str, expected_value: str
     ) -> None:
         call_args = mock_object.call_args[1]
         list_argument_value = call_args[argument_name]
         self.assertTrue(expected_value in list_argument_value)
 
     def assert_that_call_argument_equals(
-        self, mock_object: MagicMock, argument_name: str, expected_value: Optional[str]
+            self, mock_object: MagicMock, argument_name: str, expected_value: Optional[str]
     ) -> None:
         call_args = mock_object.call_args[1]
         actual_value = call_args[argument_name]

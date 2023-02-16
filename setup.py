@@ -21,7 +21,7 @@ def get_requirements(filename: str) -> List[str]:
 setup(
     name="flink-sql-emr-runner-workflows",
     version=__version__,
-    description="Framework for scheduling streaming SQL queries on Apache Hadoop YARN and on a standalone Flink cluster.",
+    description="Framework for scheduling streaming SQL queries on Apache Hadoop YARN and on a standalone Flink cluster.",  # noqa: E501
     long_description=README,
     long_description_content_type="text/markdown",
     python_requires=">=3.8",

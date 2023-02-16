@@ -6,8 +6,8 @@ from moto import mock_s3
 
 
 sys.path.insert(0, "../")
-from .test_s3_utils import put_object
-from s3 import get_latest_object
+from .test_s3_utils import put_object  # noqa: E402
+from s3 import get_latest_object  # noqa: E402
 
 
 class TestS3(unittest.TestCase):

@@ -87,7 +87,9 @@ class FlinkYarnRunner(FlinkCli):
 
     def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+
+            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | \
+            cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
         )
         return job_status
@@ -119,7 +121,8 @@ class FlinkYarnRunner(FlinkCli):
 
     def get_job_id(self, job_name: str) -> str:
         _, output, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 4 -d ' ' """,
+            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | \
+            grep {job_name} | cut -f 4 -d ' ' """,
             throw_on_error=True,
         )
         return output
@@ -164,7 +167,8 @@ class FlinkStandaloneClusterRunner(FlinkCli):
 
     def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
-            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | \
+            cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
         )
         return job_status
