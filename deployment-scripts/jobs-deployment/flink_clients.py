@@ -102,7 +102,7 @@ class FlinkYarnRunner(FlinkCli):
         :return: YARN applicationId
         """
         _, output, _ = run_cmd(
-            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,
+            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,  # noqa: F541
             throw_on_error=True,
         )
         yarn_application_id = output.strip()

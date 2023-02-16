@@ -362,7 +362,7 @@ class TestEmrFlinkRunner(unittest.TestCase):
     execution_output = stream_env.from_collection(
         collection=[(1, 'aaa'), (2, 'bb'), (3, 'cccc')],
         type_info=Types.ROW([Types.INT(), Types.STRING()])
-    )"""
+    )"""  # noqa: F541
             )
             .with_property("target-table", "output_table")
             .with_meta_query_version(2)
