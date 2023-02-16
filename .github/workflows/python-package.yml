@@ -31,6 +31,13 @@ jobs:
       - name: Test pre-commit hooks
         run: |
           pwd
+          ls
+          cd ./deployment-scripts/
+          ls
+          cd job-deployment
+          ls
+          cd tests
+          ls
           pip install -r ./deployment-scripts/job-deployment/tests/requirements.txt
           pip freeze
           pipdeptree
