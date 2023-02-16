@@ -30,7 +30,7 @@ jobs:
           pip install --upgrade pip
       - name: Test pre-commit hooks
         run: |
-          pip install .deployment-scripts/job-deployment/[tests]
+          pip install deployment-scripts/job-deployment/tests
           pip freeze
           pipdeptree
           pre-commit run --all-files
