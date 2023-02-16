@@ -34,11 +34,11 @@ jobs:
           ls
           cd ./deployment-scripts/
           ls
-          cd job-deployment
+          cd jobs-deployment
           ls
           cd tests
           ls
-          pip install -r ./deployment-scripts/job-deployment/tests/requirements.txt
+          pip install -r ./deployment-scripts/jobs-deployment/tests/requirements.txt
           pip freeze
           pipdeptree
           pre-commit run --all-files
