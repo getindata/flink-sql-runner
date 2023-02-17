@@ -45,13 +45,13 @@ class JobConfiguration(object):
     def set_flink_property(self, property_name: str, value: str) -> None:
         self.get_flink_properties()[property_name] = value
 
-    def get_flink_savepoints_dir(self) -> str:
+    def get_flink_savepoints_dir(self) -> Optional[Any]:
         return self.get_flink_property("state.savepoints.dir")
 
     def set_flink_savepoints_dir(self, value: str) -> None:
         self.set_flink_property("state.savepoints.dir", value)
 
-    def get_flink_checkpoints_dir(self) -> str:
+    def get_flink_checkpoints_dir(self) -> Optional[Any]:
         return self.get_flink_property("state.checkpoints.dir")
 
     def set_flink_checkpoints_dir(self, value: str) -> None:
