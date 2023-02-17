@@ -36,15 +36,15 @@ repos:
           - 'types-requests'
           - 'types-PyYAML'
 
-  -   repo: https://github.com/pre-commit/mirrors-eslint
-      rev: 'v8.23.0'
-      hooks:
-        -   id: eslint
-            files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
-            types: [file]
-            additional_dependencies:
-              - "@typescript-eslint/eslint-plugin@5.32.0"
-              - "@typescript-eslint/parser@5.32.0"
-              - "eslint@7.14.0"
-              - "eslint-config-prettier@6.15.0"
-              - "eslint-plugin-prettier@3.1.4"
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: 'v8.23.0'
+    hooks:
+      - id: eslint
+        files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
+        types: [file]
+        additional_dependencies:
+          - "@typescript-eslint/eslint-plugin@5.32.0"
+          - "@typescript-eslint/parser@5.32.0"
+          - "eslint@7.14.0"
+          - "eslint-config-prettier@6.15.0"
+          - "eslint-plugin-prettier@3.1.4"

@@ -4,14 +4,14 @@ import copy
 import datetime
 import logging
 import os.path
+import typing
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
-import typing
 import yaml
+from flink_clients import (FlinkCli, FlinkStandaloneClusterRunner,
+                           FlinkYarnRunner)
 from jinja2 import Environment, FileSystemLoader
-
-from flink_clients import FlinkCli, FlinkYarnRunner, FlinkStandaloneClusterRunner
 from job_configuration import JobConfiguration
 from s3 import get_content, get_latest_object, upload_content
 
