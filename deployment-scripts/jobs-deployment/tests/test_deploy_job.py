@@ -14,8 +14,8 @@ from .test_s3_utils import put_object
 sys.path.insert(0, "../")
 from deploy_job import EmrJobRunner, JinjaTemplateResolver  # noqa: 402
 from flink_clients import FlinkYarnRunner  # noqa: 402
-from job_configuration import (JobConfiguration,  # noqa: 402
-                               JobConfigurationBuilder)
+from job_configuration import JobConfiguration  # noqa: 402
+from job_configuration import JobConfigurationBuilder  # noqa: 402
 
 logging.basicConfig(level=logging.INFO)
 
