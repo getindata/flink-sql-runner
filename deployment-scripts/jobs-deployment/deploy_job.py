@@ -201,9 +201,9 @@ class EmrJobRunner(object):
         else:
             logging.info(
                 f"Starting job {job_conf.get_name()} "
-                f"from savepoint {typing.cast(typing.Tuple[str, datetime.datetime], latest_savepoint[0])}.")
+                f"from savepoint {typing.cast(typing.Tuple[str, datetime.datetime], latest_savepoint)[0]}.")
             self.__start(job_conf, savepoint_path=typing.cast(typing.Tuple[str, datetime.datetime],
-                                                              latest_savepoint[0]))
+                                                              latest_savepoint)[0])
 
     def __start(self, job_conf: JobConfiguration, savepoint_path=None):
         job_arguments = [
