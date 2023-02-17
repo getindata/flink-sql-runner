@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 import yaml
 
@@ -39,19 +39,19 @@ class JobConfiguration(object):
             return self.job_definition["flinkProperties"]
         return {}
 
-    def get_flink_property(self, property_name: str) -> Optional[Any]:
+    def get_flink_property(self, property_name: str) -> str:
         return self.get_flink_properties().get(property_name)
 
     def set_flink_property(self, property_name: str, value: str) -> None:
         self.get_flink_properties()[property_name] = value
 
-    def get_flink_savepoints_dir(self) -> Optional[Any]:
+    def get_flink_savepoints_dir(self) -> str:
         return self.get_flink_property("state.savepoints.dir")
 
     def set_flink_savepoints_dir(self, value: str) -> None:
         self.set_flink_property("state.savepoints.dir", value)
 
-    def get_flink_checkpoints_dir(self) -> Optional[Any]:
+    def get_flink_checkpoints_dir(self) -> str:
         return self.get_flink_property("state.checkpoints.dir")
 
     def set_flink_checkpoints_dir(self, value: str) -> None:
@@ -64,16 +64,16 @@ class JobConfiguration(object):
             self.job_definition["meta"] = {}
         return self.job_definition["meta"]
 
-    def get_meta_query_version(self) -> Optional[Any]:
+    def get_meta_query_version(self) -> int:
         return self.get_meta().get("query-version")
 
     def get_meta_query_version_str(self) -> str:
         return str(self.get_meta().get("query-version"))
 
-    def get_meta_query_id(self) -> Optional[Any]:
+    def get_meta_query_id(self) -> str:
         return self.get_meta().get("query-id")
 
-    def get_meta_query_create_timestamp(self) -> Optional[Any]:
+    def get_meta_query_create_timestamp(self) -> str:
         return self.get_meta().get("query-create-timestamp")
 
     def set_meta_query_version(self, version: int) -> None:
