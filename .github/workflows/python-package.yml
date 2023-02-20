@@ -37,7 +37,10 @@ jobs:
       - name: Test with tox
         run: |
           tox -e py
-          py.test --basetemp=.tox/tmp/package/1/
+      - name: Run unit tests
+        run: |
+          pytest
+
       - name: Wheel
         run: |
           python setup.py sdist
