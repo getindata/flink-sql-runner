@@ -31,5 +31,5 @@ setup(
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
-    install_requires=get_requirements("deployment-scripts/jobs-deployment/requirements.txt")
+    install_requires=get_requirements("./deployment-scripts/jobs-deployment/requirements.txt")
 )
