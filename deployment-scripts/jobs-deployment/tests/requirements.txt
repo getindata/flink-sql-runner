@@ -3,3 +3,4 @@ mock>=2.0.0
 moto
 pre-commit==2.15.0
 tox==3.21.1
+pytest==7.0.0
