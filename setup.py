@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 from setuptools import find_packages, setup
@@ -9,6 +10,8 @@ with open("README.md") as f:
 
 
 def get_requirements(filename: str) -> List[str]:
+    print(filename)
+    print(os.getcwd())
     with open(filename, "r", encoding="utf-8") as fp:
         reqs = [
             x.strip()
