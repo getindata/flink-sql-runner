@@ -75,7 +75,7 @@ class JobConfiguration(object):
         return typing.cast(str, self.get_meta().get("query-id"))
 
     def get_meta_query_create_timestamp(self) -> str:
-        return self.get_meta().get("query-create-timestamp")
+        return typing.cast(str, self.get_meta().get("query-create-timestamp"))
 
     def set_meta_query_version(self, version: int) -> None:
         self.get_meta()["query-version"] = version
