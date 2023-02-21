@@ -19,7 +19,7 @@ def get_content(bucket_name: str, object_key: str) -> Optional[str]:
             return None
         else:
             raise
-    except Exception:
+    except Exception:  # noqa: B902
         raise
 
 
