@@ -1,5 +1,6 @@
-from typing import Dict, Any
 import typing
+from typing import Any, Dict
+
 import yaml
 
 
