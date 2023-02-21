@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.8]
     steps:
       - uses: actions/checkout@v2
 
@@ -30,13 +30,16 @@ jobs:
           pip install --upgrade pip
       - name: Test pre-commit hooks
         run: |
-          pip install .[tests]
+          pip install -r ./deployment-scripts/jobs-deployment/tests/requirements.txt
           pip freeze
           pipdeptree
           pre-commit run --all-files
       - name: Test with tox
         run: |
           tox -e py
+      - name: Run unit tests
+        run: |
+          pytest
       - name: Wheel
         run: |
           python setup.py sdist

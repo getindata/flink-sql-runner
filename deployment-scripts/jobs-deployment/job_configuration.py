@@ -1,5 +1,5 @@
 from typing import Dict, Any
-
+import typing
 import yaml
 
 
@@ -40,7 +40,8 @@ class JobConfiguration(object):
         return {}
 
     def get_flink_property(self, property_name: str) -> str:
-        return self.get_flink_properties().get(property_name)
+        return typing.cast(str, self.get_flink_properties().get(property_name))
+
 
     def set_flink_property(self, property_name: str, value: str) -> None:
         self.get_flink_properties()[property_name] = value
@@ -65,13 +66,13 @@ class JobConfiguration(object):
         return self.job_definition["meta"]
 
     def get_meta_query_version(self) -> int:
-        return self.get_meta().get("query-version")
+        return typing.cast(int, self.get_meta().get("query-version"))
 
     def get_meta_query_version_str(self) -> str:
         return str(self.get_meta().get("query-version"))
 
     def get_meta_query_id(self) -> str:
-        return self.get_meta().get("query-id")
+        return typing.cast(str, self.get_meta().get("query-id"))
 
     def get_meta_query_create_timestamp(self) -> str:
         return self.get_meta().get("query-create-timestamp")
