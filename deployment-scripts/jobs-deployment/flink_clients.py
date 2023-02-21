@@ -1,7 +1,7 @@
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
-import time
 
 from cmd_utils import run_cmd
 
@@ -55,11 +55,11 @@ class FlinkCli(ABC):
 
     @abstractmethod
     def start(
-        self,
-        flink_properties: Dict[str, Any],
-        python_flink_params: List[str],
-        job_arguments: List[str],
-        savepoint_path: str = None,
+            self,
+            flink_properties: Dict[str, Any],
+            python_flink_params: List[str],
+            job_arguments: List[str],
+            savepoint_path: str = None,
     ) -> None:
         """
         Starts Flink job.
@@ -78,16 +78,17 @@ class FlinkYarnRunner(FlinkCli):
     """
 
     def __init__(
-        self,
-        session_app_id: str = None,
-        session_cluster_name: str = "Flink session cluster",
+            self,
+            session_app_id: str = None,
+            session_cluster_name: str = "Flink session cluster",
     ):
         self.session_app_id = session_app_id if session_app_id is not None else self.__get_session_app_id()
         self.session_cluster_name = session_cluster_name
 
     def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | \
+            cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
         )
         return job_status
@@ -100,7 +101,7 @@ class FlinkYarnRunner(FlinkCli):
         :return: YARN applicationId
         """
         _, output, _ = run_cmd(
-            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,
+            f"""yarn application -list | grep 'Flink session cluster' | cut -f1 -d$'\t' """,  # noqa: F541
             throw_on_error=True,
         )
         yarn_application_id = output.strip()
@@ -119,7 +120,8 @@ class FlinkYarnRunner(FlinkCli):
 
     def get_job_id(self, job_name: str) -> str:
         _, output, _ = run_cmd(
-            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | grep {job_name} | cut -f 4 -d ' ' """,
+            f"""flink list -t yarn-session -Dyarn.application.id={self.session_app_id} | \
+            grep {job_name} | cut -f 4 -d ' ' """,
             throw_on_error=True,
         )
         return output
@@ -135,11 +137,11 @@ class FlinkYarnRunner(FlinkCli):
         )
 
     def start(
-        self,
-        flink_properties: Dict[str, Any],
-        python_flink_params: List[str],
-        job_arguments: List[str],
-        savepoint_path: str = None,
+            self,
+            flink_properties: Dict[str, Any],
+            python_flink_params: List[str],
+            job_arguments: List[str],
+            savepoint_path: str = None,
     ) -> None:
         run_cmd(
             f"""flink run \
@@ -164,7 +166,8 @@ class FlinkStandaloneClusterRunner(FlinkCli):
 
     def get_job_status(self, job_name: str) -> str:
         _, job_status, _ = run_cmd(
-            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
+            f"""flink list --jobmanager "{self.jobmanager_address}" | grep "{job_name}" | \
+            cut -f 7 -d ' ' | sed 's/.//;s/.$//' | tr -d '\\n' """,
             throw_on_error=True,
         )
         return job_status
@@ -193,11 +196,11 @@ class FlinkStandaloneClusterRunner(FlinkCli):
         )
 
     def start(
-        self,
-        flink_properties: Dict[str, Any],
-        python_flink_params: List[str],
-        job_arguments: List[str],
-        savepoint_path: str = None,
+            self,
+            flink_properties: Dict[str, Any],
+            python_flink_params: List[str],
+            job_arguments: List[str],
+            savepoint_path: str = None,
     ) -> None:
         run_cmd(
             f"""flink run \

@@ -19,7 +19,7 @@ def get_content(bucket_name: str, object_key: str) -> Optional[str]:
             return None
         else:
             raise
-    except Exception:
+    except Exception:  # noqa: B902
         raise
 
 
@@ -33,7 +33,7 @@ def upload_content(content: str, bucket: str, object_name: str) -> bool:
 
 
 def get_latest_object(
-    bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
+        bucket: str, prefix: str, filter_predicate: Callable[[str], bool] = lambda x: True
 ) -> Optional[Tuple[str, datetime]]:
     response = S3ClientProvider().get().list_objects_v2(Bucket=bucket, Prefix=prefix)
     if "Contents" not in response:
