@@ -43,7 +43,6 @@ class JobConfiguration(object):
     def get_flink_property(self, property_name: str) -> str:
         return typing.cast(str, self.get_flink_properties().get(property_name))
 
-
     def set_flink_property(self, property_name: str, value: str) -> None:
         self.get_flink_properties()[property_name] = value
 
