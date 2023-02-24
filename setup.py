@@ -22,14 +22,14 @@ def get_requirements(filename: str) -> List[str]:
 
 
 setup(
-    name="flink-sql-emr-runner-workflows",
+    name="flink-sql-runner",
     version=__version__,
     description="Framework for scheduling streaming SQL queries on Apache Hadoop YARN and on a standalone Flink cluster.",  # noqa: E501
     long_description=README,
     long_description_content_type="text/markdown",
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     classifiers=[
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
     packages=find_packages(exclude=["tests"]),
