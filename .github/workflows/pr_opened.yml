@@ -1,23 +1,23 @@
-name: Tests
+name: test and build python package
 
 on:
-  push:
-    branches:
-      - main
-      - develop
   pull_request:
+    branches:
+      - 'main'
+      - 'master'
+
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: [3.7]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.3.0
 
       - name: Setup python
-        uses: actions/setup-python@v2.2.1
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -28,18 +28,29 @@ jobs:
           virtualenv venv
           source venv/bin/activate
           pip install --upgrade pip
+
       - name: Test pre-commit hooks
         run: |
           pip install -r ./deployment-scripts/jobs-deployment/tests/requirements.txt
           pip freeze
           pipdeptree
           pre-commit run --all-files
+
       - name: Test with tox
         run: |
           tox -e py
+
       - name: Run unit tests
         run: |
           pytest
-      - name: Wheel
+
+      - name: Build using wheel
+        id: wheel
         run: |
           python setup.py sdist
+
+      - uses: actions/upload-artifact@v3.1.2
+        with:
+          name: package
+          path: dist/
+          retention-days: 1
