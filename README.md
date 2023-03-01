@@ -22,11 +22,11 @@
 
 # flink-sql-runner
 
-_flink-sql-runner_ is a framework for scheduling streaming SQL queries on 
-[Apache Hadoop YARN](https://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html) and on a standalone 
-Flink cluster. It simplifies defining and executing 
-[Flink SQL](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/overview/) jobs. 
-The user has only to declare job's manifest YAML file which contains the query to be executed and basic metadata. 
+_flink-sql-runner_ is a framework for scheduling streaming SQL queries on
+[Apache Hadoop YARN](https://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html) and on a standalone
+Flink cluster. It simplifies defining and executing
+[Flink SQL](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/overview/) jobs.
+The user has only to declare job's manifest YAML file which contains the query to be executed and basic metadata.
 Jobs lifecycle is managed by the framework.
 
 The module has the following structure:
