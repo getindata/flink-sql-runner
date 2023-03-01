@@ -4,13 +4,14 @@ import copy
 import datetime
 import logging
 import os.path
+import typing
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
+from flink_clients import (FlinkCli, FlinkStandaloneClusterRunner,
+                           FlinkYarnRunner)
 from jinja2 import Environment, FileSystemLoader
-
-from flink_clients import FlinkCli, FlinkYarnRunner, FlinkStandaloneClusterRunner
 from job_configuration import JobConfiguration
 from s3 import get_content, get_latest_object, upload_content
 
@@ -65,11 +66,11 @@ def parse_args():
 
 class JinjaTemplateResolver(object):
     def resolve(
-        self,
-        template_dir: str,
-        template_file: str,
-        vars: Dict[str, str],
-        output_file_path: str,
+            self,
+            template_dir: str,
+            template_file: str,
+            vars: Dict[str, str],
+            output_file_path: str,
     ) -> None:
         environment = Environment(loader=FileSystemLoader(template_dir))
         template = environment.get_template(template_file)
@@ -81,16 +82,16 @@ class JinjaTemplateResolver(object):
 
 class EmrJobRunner(object):
     def __init__(
-        self,
-        job_config_path: str,
-        pyflink_runner_dir: str,
-        external_job_config_bucket: str,
-        external_job_config_prefix: str,
-        table_definition_paths: str,
-        pyexec_path: str,
-        flink_cli_runner: FlinkCli,
-        jinja_template_resolver: JinjaTemplateResolver,
-        passthrough_args: List[str],
+            self,
+            job_config_path: str,
+            pyflink_runner_dir: str,
+            external_job_config_bucket: str,
+            external_job_config_prefix: str,
+            table_definition_paths: str,
+            pyexec_path: str,
+            flink_cli_runner: FlinkCli,
+            jinja_template_resolver: JinjaTemplateResolver,
+            passthrough_args: List[str],
     ):
         self.job_config_path = job_config_path
         self.pyflink_runner_dir = pyflink_runner_dir
@@ -198,8 +199,11 @@ class EmrJobRunner(object):
             logging.info(f"Starting job {job_conf.get_name()} from checkpoint {latest_checkpoint[0]}.")
             self.__start(job_conf, savepoint_path=latest_checkpoint[0])
         else:
-            logging.info(f"Starting job {job_conf.get_name()} from savepoint {latest_savepoint[0]}.")
-            self.__start(job_conf, savepoint_path=latest_savepoint[0])
+            logging.info(
+                f"Starting job {job_conf.get_name()} "
+                f"from savepoint {typing.cast(typing.Tuple[str, datetime.datetime], latest_savepoint)[0]}.")
+            self.__start(job_conf, savepoint_path=typing.cast(typing.Tuple[str, datetime.datetime],
+                                                              latest_savepoint)[0])
 
     def __start(self, job_conf: JobConfiguration, savepoint_path=None):
         job_arguments = [
@@ -296,7 +300,7 @@ class EmrJobRunner(object):
         return self.__find_latest_state_internal(bucket_name, prefix)
 
     def __find_latest_state_internal(
-        self, state_bucket: str, state_prefix: str
+            self, state_bucket: str, state_prefix: str
     ) -> Optional[Tuple[str, datetime.datetime]]:
         last_created = get_latest_object(state_bucket, state_prefix, lambda k: k.endswith("_metadata"))
         if last_created is None:

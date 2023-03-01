@@ -6,9 +6,8 @@ import tempfile
 from typing import List
 
 import yaml
-
 from deploy_job import EmrJobRunner, JinjaTemplateResolver
-from flink_clients import FlinkYarnRunner, FlinkStandaloneClusterRunner
+from flink_clients import FlinkStandaloneClusterRunner, FlinkYarnRunner
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
