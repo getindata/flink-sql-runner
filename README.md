@@ -31,8 +31,8 @@ Jobs lifecycle is managed by the framework.
 
 The module has the following structure:
 
-- `/deployment-scripts/` - contains deployment scripts.
-- `/python/` - contains Flink job runners.
+- `/flink_sql_runner/` - contains deployment scripts.
+- `/flink_sql_runner/runner/` - contains Flink job runners.
 
 Future improvements:
 
@@ -190,10 +190,10 @@ _Decision_: Flink jobs are deployed on a shared Flink Session Cluster.
 Sample command to trigger deployment of all queries on YARN:
 
 ```bash
-python3 flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
+python3 flink_sql_runner/deploy.py \
     --path /some/path/to/sql/queries/ \
     --template-file flink-sql-runner/deployment-scripts/job-template.yaml \
-    --pyflink-runner-dir flink-sql-runner/python/ \
+    --pyflink-runner-dir flink_sql_runner/runner/ \
     --pyexec-path /home/hadoop/flink-sql-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
     --external-job-config-prefix flink-sql-runner/manifests/ \
@@ -205,9 +205,9 @@ python3 flink-sql-runner/deployment-scripts/jobs-deployment/deploy.py \
 Sample command to trigger deployment of a single query:
 
 ```bash
-python3 flink-sql-runner/deployment-scripts/jobs-deployment/deploy_job.py \
+python3 flink_sql_runner/deploy_job.py \
     --job-config-path some/path/some-query-name.yaml \
-    --pyflink-runner-dir flink-sql-runner/python/ \
+    --pyflink-runner-dir flink_sql_runner/runner/ \
     --pyexec-path /home/hadoop/flink-sql-runner/venv/bin/python3 \
     --external-job-config-bucket some-s3-bucket \
     --external-job-config-prefix flink-sql-runner/manifests/ \

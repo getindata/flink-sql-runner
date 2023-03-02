@@ -29,7 +29,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
-    packages=find_packages(exclude=("docs", "*.tests", "*.tests.*", "tests.*", "tests", "example", "docker")),
+    packages=find_packages(exclude=["docs", "*.tests", "*.tests.*", "tests.*", "tests", "example", "docker"]),
     include_package_data=True,
     install_requires=get_requirements("requirements.txt")
 )
