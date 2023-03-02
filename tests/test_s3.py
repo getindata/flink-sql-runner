@@ -3,7 +3,7 @@ import unittest
 import boto3
 from moto import mock_s3
 
-from flink_sql_runner.s3 import get_latest_object  # noqa: E402
+from flink_sql_runner.s3 import get_latest_object
 
 from .test_s3_utils import put_object  # noqa: E402
 

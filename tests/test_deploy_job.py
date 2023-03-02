@@ -8,12 +8,12 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
-from flink_sql_runner.deploy_job import EmrJobRunner  # noqa: 402
+from flink_sql_runner.deploy_job import EmrJobRunner
 from flink_sql_runner.deploy_job import JinjaTemplateResolver
-from flink_sql_runner.flink_clients import FlinkYarnRunner  # noqa: 402
-from flink_sql_runner.job_configuration import JobConfiguration  # noqa: 402
+from flink_sql_runner.flink_clients import FlinkYarnRunner
+from flink_sql_runner.job_configuration import JobConfiguration
 from flink_sql_runner.job_configuration import \
-    JobConfigurationBuilder  # noqa: 402
+    JobConfigurationBuilder
 
 from .test_s3_utils import put_object
 
