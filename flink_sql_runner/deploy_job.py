@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from flink_sql_runner.flink_clients import (FlinkCli, FlinkStandaloneClusterRunner,
+from flink_sql_runner.flink_clients import (FlinkCli,
+                                            FlinkStandaloneClusterRunner,
                                             FlinkYarnRunner)
 from flink_sql_runner.job_configuration import JobConfiguration
 from flink_sql_runner.s3 import get_content, get_latest_object, upload_content
