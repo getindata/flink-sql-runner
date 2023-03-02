@@ -9,11 +9,12 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
-from flink_clients import (FlinkCli, FlinkStandaloneClusterRunner,
-                           FlinkYarnRunner)
 from jinja2 import Environment, FileSystemLoader
-from job_configuration import JobConfiguration
-from s3 import get_content, get_latest_object, upload_content
+
+from flink_sql_runner.flink_clients import (FlinkCli, FlinkStandaloneClusterRunner,
+                                            FlinkYarnRunner)
+from flink_sql_runner.job_configuration import JobConfiguration
+from flink_sql_runner.s3 import get_content, get_latest_object, upload_content
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 

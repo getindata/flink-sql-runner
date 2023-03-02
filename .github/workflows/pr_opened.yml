@@ -31,7 +31,7 @@ jobs:
 
       - name: Test pre-commit hooks
         run: |
-          pip install -r ./deployment-scripts/jobs-deployment/tests/requirements.txt
+          pip install -r ./tests/requirements.txt
           pip freeze
           pipdeptree
           pre-commit run --all-files
