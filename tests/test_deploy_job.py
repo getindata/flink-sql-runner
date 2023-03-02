@@ -8,12 +8,10 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
-from flink_sql_runner.deploy_job import EmrJobRunner
-from flink_sql_runner.deploy_job import JinjaTemplateResolver
+from flink_sql_runner.deploy_job import EmrJobRunner, JinjaTemplateResolver
 from flink_sql_runner.flink_clients import FlinkYarnRunner
-from flink_sql_runner.job_configuration import JobConfiguration
-from flink_sql_runner.job_configuration import \
-    JobConfigurationBuilder
+from flink_sql_runner.job_configuration import (JobConfiguration,
+                                                JobConfigurationBuilder)
 
 from .test_s3_utils import put_object
 
