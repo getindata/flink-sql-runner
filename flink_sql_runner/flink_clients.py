@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
-from cmd_utils import run_cmd
+from flink_sql_runner.cmd_utils import run_cmd
 
 
 class FlinkCli(ABC):

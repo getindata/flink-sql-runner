@@ -1,0 +1,10 @@
+apache-flink>=1.15,<1.17
+apache-flink-libraries>=1.15,<1.17
+boto3==1.24.43
+sqlparse==0.4.3
+s3fs==2022.11.0
+typing-extensions==3.7.4.3
+boto3==1.24.43
+PyYAML==5.4.1
+yq==3.1.0
+jinja2==3.1.2

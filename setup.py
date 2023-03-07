@@ -1,17 +1,14 @@
-import os
 from typing import List
 
 from setuptools import find_packages, setup
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 with open("README.md") as f:
     README = f.read()
 
 
 def get_requirements(filename: str) -> List[str]:
-    print(filename)
-    print(os.getcwd())
     with open(filename, "r", encoding="utf-8") as fp:
         reqs = [
             x.strip()
@@ -32,7 +29,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
-    packages=find_packages(exclude=["tests"]),
+    packages=find_packages(exclude=["docs", "*.tests", "*.tests.*", "tests.*", "tests", "example", "docker"]),
     include_package_data=True,
-    install_requires=get_requirements("./deployment-scripts/jobs-deployment/requirements.txt")
+    install_requires=get_requirements("requirements.txt")
 )
