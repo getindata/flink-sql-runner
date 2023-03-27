@@ -97,7 +97,7 @@ class FlinkJobRunner(object):
             job_manifest = self.manifest_manager.fetch_job_manifest(self.job_name)
             if job_manifest is None:
                 raise ValueError(f"Job manifest for {self.job_name} not found.")
-            self.stop_with_savepoint(job_manifest)
+            self.__stop_with_savepoint(job_manifest)
             return
 
         logging.info(f"Deploying '{self.job_name}'.")
@@ -123,7 +123,7 @@ class FlinkJobRunner(object):
             # The job manifest has been modified. Job needs to be restarted.
             if self.__is_job_running(self.job_name):
                 # Stop the job using the old config (query-version in particular).
-                self.stop_with_savepoint(external_config)
+                self.__stop_with_savepoint(external_config)
 
             if external_config and not self.__has_job_definition_changed(external_config, self.new_job_conf):
                 self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
@@ -152,7 +152,7 @@ class FlinkJobRunner(object):
         job_conf.set_meta_query_create_timestamp(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.__start_with_clean_state(job_conf)
 
-    def stop_with_savepoint(self, job_conf: JobConfiguration) -> None:
+    def __stop_with_savepoint(self, job_conf: JobConfiguration) -> None:
         job_id = self.flink_cli_runner.get_job_id(job_conf.get_name())
         savepoint_path = os.path.join(job_conf.get_flink_savepoints_dir(), job_conf.get_meta_query_version_str())
         logging.info(f"Stopping job {job_conf.get_name()} with savepoint at '{savepoint_path}'.")
