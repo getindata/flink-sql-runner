@@ -91,11 +91,11 @@ class TestBase(unittest.TestCase):
             .with_name(job_name)
             .with_description("Some description")
             .with_code(
-                f"""
+                """
     execution_output = stream_env.from_collection(
         collection=[(1, 'aaa'), (2, 'bb'), (3, 'cccc')],
         type_info=Types.ROW([Types.INT(), Types.STRING()])
-    )"""  # noqa: F541
+    )"""
             )
             .with_property("target-table", "output_table")
             .with_meta_query_version(2)
