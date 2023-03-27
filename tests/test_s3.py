@@ -61,4 +61,7 @@ class TestS3(unittest.TestCase):
 
         # then
         self.assertIsNotNone(all_objects)
-        self.assertSetEqual(set(all_objects), {"file1.yaml", "file2.yaml", "file3.yaml"})
+        self.assertSetEqual(
+            set(all_objects),
+            {"some/path/file1.yaml", "some/path/file2.yaml", "some/path/file3.yaml"}
+        )
