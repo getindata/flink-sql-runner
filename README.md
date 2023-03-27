@@ -179,9 +179,7 @@ _Decision_: Flink jobs are deployed on a shared Flink Session Cluster.
 - All necessary Flink dependencies are available on the classpath on the EMR master node.
 - Python virtualenv with all necessary python dependencies is created on each EMR node.
   ```bash
-  python3 -m pip install \
-      -r flink-sql-runner/deployment-scripts/jobs-deployment/requirements.txt \
-      -r flink-sql-runner/python/requirements.txt
+  python3 -m pip install flink-sql-runner
   ```
 - An S3 bucket for storing YAML manifests file is created. See [Job manifest](#job-manifest) section.
 

@@ -8,17 +8,18 @@ from unittest.mock import MagicMock
 import boto3
 from moto import mock_s3
 
-from flink_sql_runner.deploy_job import EmrJobRunner, JinjaTemplateResolver
+from flink_sql_runner.deploy_job import FlinkJobRunner, JinjaTemplateResolver
 from flink_sql_runner.flink_clients import FlinkYarnRunner
 from flink_sql_runner.job_configuration import (JobConfiguration,
                                                 JobConfigurationBuilder)
+from flink_sql_runner.manifest import ManifestManager
 
 from .test_s3_utils import put_object
 
 logging.basicConfig(level=logging.INFO)
 
 
-class TestEmrFlinkRunner(unittest.TestCase):
+class TestFlinkJobRunner(unittest.TestCase):
     TEST_BUCKET_NAME = "test_bucket"
     TEST_JOB_NAME = "test-query"
 
@@ -47,11 +48,10 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
 
         # and: a SQL job manifest
-        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
+        job_manifest = self.a_valid_sql_job_manifest().build()
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(job_manifest)
 
         # then
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
@@ -68,12 +68,11 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
 
         # and: SQL job manifest
-        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
-        self._upload_manifest_to_s3(job_manifest)
+        job_manifest = self.a_valid_sql_job_manifest().build()
+        self._upload_manifest_to_s3(job_manifest.to_yaml())
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(job_manifest)
 
         # then
         self.flink_cli_runner.is_job_running.assert_called_with(self.TEST_JOB_NAME)
@@ -103,12 +102,10 @@ class TestEmrFlinkRunner(unittest.TestCase):
             .with_flink_property("pipeline.object-reuse", "false")
             .with_no_meta()
             .build()
-            .to_yaml()
         )
-        config_file_path = self._write_to_local_file(new_job_manifest)
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(new_job_manifest)
 
         # then
         self.flink_cli_runner.is_job_running.assert_called_with(self.TEST_JOB_NAME)
@@ -133,12 +130,11 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.get_job_id = MagicMock(return_value="test_job_id")
 
         # and: SQL job manifest
-        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
-        self._upload_manifest_to_s3(job_manifest)
+        job_manifest = self.a_valid_sql_job_manifest().build()
+        self._upload_manifest_to_s3(job_manifest.to_yaml())
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(job_manifest)
 
         # then
         self.flink_cli_runner.is_job_running.assert_called_with(self.TEST_JOB_NAME)
@@ -182,12 +178,10 @@ class TestEmrFlinkRunner(unittest.TestCase):
             .with_sql("SELECT * FROM test_table WHERE id > 5")
             .with_no_meta()
             .build()
-            .to_yaml()
         )
-        config_file_path = self._write_to_local_file(new_job_manifest)
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(new_job_manifest)
 
         # then
         self.flink_cli_runner.is_job_running.assert_called_with(self.TEST_JOB_NAME)
@@ -210,11 +204,10 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
 
         # and: SQL job manifest
-        job_manifest = self.a_valid_code_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
+        job_manifest = self.a_valid_code_job_manifest().build()
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(job_manifest)
 
         # then
         self.flink_cli_runner.stop_with_savepoint.assert_not_called()
@@ -241,12 +234,11 @@ class TestEmrFlinkRunner(unittest.TestCase):
         )
 
         # and: a SQL job manifest
-        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
+        job_manifest = self.a_valid_sql_job_manifest().build()
 
         # when
         try:
-            self._run_job(config_file_path)
+            self._run_job(job_manifest)
 
         # then
         except RuntimeError as e:
@@ -264,11 +256,10 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.flink_cli_runner.stop_with_savepoint = MagicMock()
 
         # and: a SQL job manifest
-        job_manifest = self.a_valid_sql_job_manifest().build().to_yaml()
-        config_file_path = self._write_to_local_file(job_manifest)
+        job_manifest = self.a_valid_sql_job_manifest().build()
 
         # when
-        self._run_job(config_file_path)
+        self._run_job(job_manifest)
 
         # then
         self.assertEqual(10, self.flink_cli_runner.get_job_status.call_count)
@@ -277,12 +268,16 @@ class TestEmrFlinkRunner(unittest.TestCase):
         self.s3 = boto3.resource("s3", region_name="us-east-1")
         self.s3_bucket = self.s3.create_bucket(Bucket=self.TEST_BUCKET_NAME)
 
-    def _run_job(self, config_file_path):
-        EmrJobRunner(
-            job_config_path=config_file_path,
-            pyflink_runner_dir="/some/dummy/path/",
+    def _run_job(self, job_conf: Optional[JobConfiguration]) -> None:
+        manifest_manager = ManifestManager(
             external_job_config_bucket=self.TEST_BUCKET_NAME,
             external_job_config_prefix="test-prefix/",
+        )
+        FlinkJobRunner(
+            job_name=job_conf.get_name(),
+            new_job_conf=job_conf,
+            pyflink_runner_dir="/some/dummy/path/",
+            manifest_manager=manifest_manager,
             table_definition_paths=self.static_table_definitions_paths,
             flink_cli_runner=self.flink_cli_runner,
             jinja_template_resolver=self.jinja_template_resolver,
