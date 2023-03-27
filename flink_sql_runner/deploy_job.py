@@ -107,20 +107,19 @@ class FlinkJobRunner(object):
         external_config = self.manifest_manager.fetch_job_manifest(self.job_name)
         logging.info(f"External config:\n{external_config}")
 
-        job_is_running = self.__is_job_running(self.job_name)
         if not external_config:
             # The job manifest did not exist. Starting a newly created job.
             self.__start_new_job(self.new_job_conf)
             self.manifest_manager.upload_job_manifest(self.new_job_conf)
         elif external_config and not self.__has_job_manifest_changed(external_config, self.new_job_conf):
             # The job manifest has not been modified. There is no need to restart the job. Just ensure it's running.
-            if job_is_running:
+            if self.__is_job_running(self.job_name):
                 logging.info("Job manifest has not changed. Skipping job restart.")
             else:
                 self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
         else:
             # The job manifest has been modified. Job needs to be restarted.
-            if job_is_running:
+            if self.__is_job_running(self.job_name):
                 # Stop the job using the old config (query-version in particular).
                 self.stop_with_savepoint(external_config)
 
@@ -327,34 +326,12 @@ def read_config(config_file: str):
         return yaml.load(qf, yaml.FullLoader)
 
 
-class FlinkJobRunnerFactory:
-    def __init__(self):
-        pass
-
-    def create(self,
-               job_conf: Optional[JobConfiguration],
-               pyflink_runner_dir: str,
-               table_definition_paths: str,
-               pyexec_path: str,
-               flink_cli_runner: FlinkCli,
-               jinja_template_resolver: JinjaTemplateResolver,
-               manifest_manager: ManifestManager,
-               passthrough_args: Any) -> FlinkJobRunner:
-        return FlinkJobRunner(
-            new_job_conf=job_conf,
-            pyflink_runner_dir=pyflink_runner_dir,
-            table_definition_paths=table_definition_paths,
-            pyexec_path=pyexec_path,
-            flink_cli_runner=flink_cli_runner,
-            jinja_template_resolver=jinja_template_resolver,
-            manifest_manager=manifest_manager,
-            passthrough_args=passthrough_args,
-        )
-
 if __name__ == "__main__":
     args, passthrough_args = parse_args()
+    configuration = JobConfiguration(read_config(args.job_config_path))
     FlinkJobRunner(
-        new_job_conf=(JobConfiguration(read_config(args.job_config_path))),
+        job_name=configuration.get_name(),
+        new_job_conf=configuration,
         pyflink_runner_dir=args.pyflink_runner_dir,
         table_definition_paths=args.base_output_path,
         pyexec_path=args.pyexec_path,

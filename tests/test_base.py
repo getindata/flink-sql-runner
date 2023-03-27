@@ -82,10 +82,12 @@ class TestBase(unittest.TestCase):
             .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{job_name}/")
         )
 
-    def a_valid_code_job_manifest(self) -> "JobConfigurationBuilder":
+    def a_valid_code_job_manifest(self, job_name: str = None) -> "JobConfigurationBuilder":
+        if job_name is None:
+            job_name = self.TEST_JOB_NAME
         return (
             JobConfigurationBuilder()
-            .with_name(self.TEST_JOB_NAME)
+            .with_name(job_name)
             .with_description("Some description")
             .with_code(
                 f"""
@@ -98,6 +100,6 @@ class TestBase(unittest.TestCase):
             .with_meta_query_version(2)
             .with_meta_query_id("e080791a-80e7-43a6-9966-4d6dd0786543")
             .with_meta_query_create_timestamp("2022-11-23T11:36:11.434123")
-            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/")
-            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/")
+            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{job_name}/")
+            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{job_name}/")
         )

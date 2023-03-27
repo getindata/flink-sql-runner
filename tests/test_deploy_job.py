@@ -1,7 +1,4 @@
 import logging
-import os.path
-import tempfile
-import unittest
 from typing import Optional
 from unittest.mock import MagicMock
 
@@ -10,16 +7,14 @@ from moto import mock_s3
 
 from flink_sql_runner.deploy_job import FlinkJobRunner, JinjaTemplateResolver
 from flink_sql_runner.flink_clients import FlinkYarnRunner
-from flink_sql_runner.job_configuration import (JobConfiguration,
-                                                JobConfigurationBuilder)
+from flink_sql_runner.job_configuration import JobConfiguration
 from flink_sql_runner.manifest import ManifestManager
-
-from .test_s3_utils import put_object
+from tests.test_base import TestBase
 
 logging.basicConfig(level=logging.INFO)
 
 
-class TestFlinkJobRunner(unittest.TestCase):
+class TestFlinkJobRunner(TestBase):
     TEST_BUCKET_NAME = "test_bucket"
     TEST_JOB_NAME = "test-query"
 
@@ -285,31 +280,6 @@ class TestFlinkJobRunner(unittest.TestCase):
             passthrough_args=[],
         ).run()
 
-    def _write_to_local_file(self, content: str) -> str:
-        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as tf:
-            tf.write(content.encode())
-            return tf.name
-
-    def _put_state_to_s3(self, state_base_path: str) -> None:
-        logging.info(f"[TEST] Adding state into '{state_base_path}'.")
-        put_object(self.s3_bucket, os.path.join(state_base_path, "_metadata"))
-
-    def _load_manifest_from_s3(self, s3_key: str = None) -> "JobConfiguration":
-        if s3_key is None:
-            s3_key = f"test-prefix/{self.TEST_JOB_NAME}.yaml"
-        obj = self._get_object(s3_key)
-        return JobConfiguration.from_yaml(obj)
-
-    def _upload_manifest_to_s3(self, job_manifest: str) -> None:
-        put_object(
-            self.s3_bucket,
-            key=f"test-prefix/{self.TEST_JOB_NAME}.yaml",
-            value=job_manifest,
-        )
-
-    def _get_object(self, key: str) -> str:
-        return self.s3.Object(self.TEST_BUCKET_NAME, key).get()["Body"].read().decode()
-
     def assert_that_dict_call_argument_contains(
             self, mock_object: MagicMock, argument_name: str, key: str, expected_value: str
     ) -> None:
@@ -331,37 +301,3 @@ class TestFlinkJobRunner(unittest.TestCase):
         call_args = mock_object.call_args[1]
         actual_value = call_args[argument_name]
         self.assertEqual(expected_value, actual_value)
-
-    def a_valid_sql_job_manifest(self) -> "JobConfigurationBuilder":
-        return (
-            JobConfigurationBuilder()
-            .with_name(self.TEST_JOB_NAME)
-            .with_description("Some description")
-            .with_sql("SELECT * FROM test_table")
-            .with_property("target-table", "output_table")
-            .with_meta_query_version(2)
-            .with_meta_query_id("e080791a-80e7-43a6-9966-4d6dd0786543")
-            .with_meta_query_create_timestamp("2022-11-23T11:36:11.434123")
-            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/")
-            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/")
-        )
-
-    def a_valid_code_job_manifest(self) -> "JobConfigurationBuilder":
-        return (
-            JobConfigurationBuilder()
-            .with_name(self.TEST_JOB_NAME)
-            .with_description("Some description")
-            .with_code(
-                f"""
-    execution_output = stream_env.from_collection(
-        collection=[(1, 'aaa'), (2, 'bb'), (3, 'cccc')],
-        type_info=Types.ROW([Types.INT(), Types.STRING()])
-    )"""  # noqa: F541
-            )
-            .with_property("target-table", "output_table")
-            .with_meta_query_version(2)
-            .with_meta_query_id("e080791a-80e7-43a6-9966-4d6dd0786543")
-            .with_meta_query_create_timestamp("2022-11-23T11:36:11.434123")
-            .with_flink_savepoints_dir(f"s3://{self.TEST_BUCKET_NAME}/savepoints/{self.TEST_JOB_NAME}/")
-            .with_flink_checkpoints_dir(f"s3://{self.TEST_BUCKET_NAME}/checkpoints/{self.TEST_JOB_NAME}/")
-        )

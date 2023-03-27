@@ -42,27 +42,27 @@ class TestFlinkRunner(TestBase):
         self.flink_cli_runner.get_job_id = MagicMock(side_effect=lambda name: "id_1" if name == "job1" else "id_2")
 
         # and: a SQL job manifests in S3
-        job_manifest_1 = (self.a_valid_sql_job_manifest(job_name="job1")
+        manifest_1 = (self.a_valid_sql_job_manifest(job_name="job1")
                           .with_flink_property("pipeline.object-reuse", True)
                           .build())
-        job_manifest_2 = (self.a_valid_sql_job_manifest(job_name="job2")
+        manifest_2 = (self.a_valid_sql_job_manifest(job_name="job2")
                           .with_flink_property("pipeline.object-reuse", True)
                           .build())
-        put_object(self.s3_bucket, "manifests/job1.yaml", job_manifest_1.to_yaml())
-        put_object(self.s3_bucket, "manifests/job2.yaml", job_manifest_2.to_yaml())
+        put_object(self.s3_bucket, "manifests/job1.yaml", manifest_1.to_yaml())
+        put_object(self.s3_bucket, "manifests/job2.yaml", manifest_2.to_yaml())
 
         # and: new configs
         with open(os.path.join(self.config_dir.name, "job1.yaml"), "w") as f:
-            f.write(str(job_manifest_1.to_yaml()))
+            f.write(str(manifest_1.to_yaml()))
 
         # and: template file
         template_file_path = self._write_to_local_file("flinkProperties:\n  'pipeline.object-reuse': True\n")
 
         # and: savepoints for running jobs
         self._put_state_to_s3(
-            f"savepoints/{job_manifest_1.get_name()}/{job_manifest_1.get_meta_query_version()}/savepoint-438ed8-5a70b22243a2/")
+            f"savepoints/{manifest_1.get_name()}/{manifest_1.get_meta_query_version()}/savepoint-438ed8-5a70b22243a2/")
         self._put_state_to_s3(
-            f"savepoints/{job_manifest_2.get_name()}/{job_manifest_2.get_meta_query_version()}/savepoint-4b5c0e-9051d13369bd/")
+            f"savepoints/{manifest_2.get_name()}/{manifest_2.get_meta_query_version()}/savepoint-4b5c0e-9051d13369bd/")
 
         # when
         FlinkRunner(
