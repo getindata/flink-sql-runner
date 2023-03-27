@@ -95,6 +95,8 @@ class FlinkJobRunner(object):
         if self.new_job_conf is None:
             logging.info(f"Deleting job '{self.job_name}'.")
             job_manifest = self.manifest_manager.fetch_job_manifest(self.job_name)
+            if job_manifest is None:
+                raise ValueError(f"Job manifest for {self.job_name} not found.")
             self.stop_with_savepoint(job_manifest)
             return
 

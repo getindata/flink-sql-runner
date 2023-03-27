@@ -263,7 +263,7 @@ class TestFlinkJobRunner(TestBase):
         self.s3 = boto3.resource("s3", region_name="us-east-1")
         self.s3_bucket = self.s3.create_bucket(Bucket=self.TEST_BUCKET_NAME)
 
-    def _run_job(self, job_conf: Optional[JobConfiguration]) -> None:
+    def _run_job(self, job_conf: JobConfiguration) -> None:
         manifest_manager = ManifestManager(
             external_job_config_bucket=self.TEST_BUCKET_NAME,
             external_job_config_prefix="test-prefix/",
