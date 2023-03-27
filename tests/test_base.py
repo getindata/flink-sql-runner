@@ -7,7 +7,8 @@ from unittest.mock import MagicMock
 
 import boto3
 
-from flink_sql_runner.job_configuration import JobConfigurationBuilder, JobConfiguration
+from flink_sql_runner.job_configuration import (JobConfiguration,
+                                                JobConfigurationBuilder)
 from tests.test_s3_utils import put_object
 
 

@@ -7,8 +7,9 @@ from typing import List
 import yaml
 
 from flink_sql_runner.deploy_job import FlinkJobRunner, JinjaTemplateResolver
-from flink_sql_runner.flink_clients import (FlinkStandaloneClusterRunner,
-                                            FlinkYarnRunner, FlinkCli)
+from flink_sql_runner.flink_clients import (FlinkCli,
+                                            FlinkStandaloneClusterRunner,
+                                            FlinkYarnRunner)
 from flink_sql_runner.job_configuration import JobConfiguration
 from flink_sql_runner.manifest import ManifestManager
 

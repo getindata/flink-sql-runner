@@ -4,6 +4,7 @@ import boto3
 from moto import mock_s3
 
 from flink_sql_runner.s3 import get_latest_object, list_objects
+
 from .test_s3_utils import put_object  # noqa: E402
 
 
