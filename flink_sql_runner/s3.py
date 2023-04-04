@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import boto3
 import botocore
@@ -30,6 +30,14 @@ def upload_content(content: str, bucket: str, object_name: str) -> bool:
         logging.error(e)
         return False
     return True
+
+
+def list_objects(bucket: str, prefix: str) -> List[str]:
+    response = S3ClientProvider().get().list_objects_v2(Bucket=bucket, Prefix=prefix)
+    if "Contents" not in response:
+        return []
+    else:
+        return [obj["Key"] for obj in (response["Contents"])]
 
 
 def get_latest_object(

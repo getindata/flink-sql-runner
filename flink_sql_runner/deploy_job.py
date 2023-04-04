@@ -9,13 +9,14 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
 
 from flink_sql_runner.flink_clients import (FlinkCli,
                                             FlinkStandaloneClusterRunner,
                                             FlinkYarnRunner)
+from flink_sql_runner.jinja import JinjaTemplateResolver
 from flink_sql_runner.job_configuration import JobConfiguration
-from flink_sql_runner.s3 import get_content, get_latest_object, upload_content
+from flink_sql_runner.manifest import ManifestManager
+from flink_sql_runner.s3 import get_latest_object
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -66,74 +67,61 @@ def parse_args():
     return parser.parse_known_args()
 
 
-class JinjaTemplateResolver(object):
-    def resolve(
-            self,
-            template_dir: str,
-            template_file: str,
-            vars: Dict[str, str],
-            output_file_path: str,
-    ) -> None:
-        environment = Environment(loader=FileSystemLoader(template_dir))
-        template = environment.get_template(template_file)
-        content = template.render(**vars)
-        with open(output_file_path, mode="w", encoding="utf-8") as run_file:
-            run_file.truncate()
-            run_file.write(content)
-
-
-class EmrJobRunner(object):
+class FlinkJobRunner(object):
     def __init__(
             self,
-            job_config_path: str,
+            job_name: str,
+            new_job_conf: Optional[JobConfiguration],
             pyflink_runner_dir: str,
-            external_job_config_bucket: str,
-            external_job_config_prefix: str,
             table_definition_paths: str,
             pyexec_path: str,
             flink_cli_runner: FlinkCli,
             jinja_template_resolver: JinjaTemplateResolver,
+            manifest_manager: ManifestManager,
             passthrough_args: List[str],
     ):
-        self.job_config_path = job_config_path
+        self.job_name = job_name
+        self.new_job_conf = new_job_conf
         self.pyflink_runner_dir = pyflink_runner_dir
-        self.external_job_config_bucket = external_job_config_bucket
-        self.external_job_config_prefix = external_job_config_prefix
         self.table_definition_paths = table_definition_paths
         self.pyexec_path = pyexec_path
         self.pyclientexec_path = pyexec_path
         self.flink_cli_runner = flink_cli_runner
         self.jinja_template_resolver = jinja_template_resolver
+        self.manifest_manager = manifest_manager
         self.passthrough_args = passthrough_args
-        self.new_job_conf = JobConfiguration(self.__read_config(job_config_path))
 
     def run(self) -> None:
-        logging.info(f"Deploying '{self.new_job_conf.get_name()}'.")
+        if self.new_job_conf is None:
+            logging.info(f"Deleting job '{self.job_name}'.")
+            job_manifest = self.manifest_manager.fetch_job_manifest(self.job_name)
+            if job_manifest is None:
+                raise ValueError(f"Job manifest for {self.job_name} not found.")
+            self.__stop_with_savepoint(job_manifest)
+            return
+
+        logging.info(f"Deploying '{self.job_name}'.")
         if self.new_job_conf.is_sql():
             logging.info(f"Deploying query: |{self.new_job_conf.get_sql()}|")
         else:
             logging.info(f"Deploying code:\n{self.new_job_conf.get_code()}")
 
-        external_config = self.__fetch_job_manifest(
-            self.external_job_config_bucket,
-            self.external_job_config_prefix,
-            self.new_job_conf.get_name(),
-        )
+        external_config = self.manifest_manager.fetch_job_manifest(self.job_name)
         logging.info(f"External config:\n{external_config}")
 
         if not external_config:
             # The job manifest did not exist. Starting a newly created job.
             self.__start_new_job(self.new_job_conf)
-            self.__upload_job_manifest(self.new_job_conf)
+            self.manifest_manager.upload_job_manifest(self.new_job_conf)
         elif external_config and not self.__has_job_manifest_changed(external_config, self.new_job_conf):
             # The job manifest has not been modified. There is no need to restart the job. Just ensure it's running.
-            if self.__is_job_running(self.new_job_conf.get_name()):
+            if self.__is_job_running(self.job_name):
                 logging.info("Job manifest has not changed. Skipping job restart.")
             else:
                 self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
         else:
             # The job manifest has been modified. Job needs to be restarted.
-            if self.__is_job_running(self.new_job_conf.get_name()):
+            if self.__is_job_running(self.job_name):
                 # Stop the job using the old config (query-version in particular).
                 self.__stop_with_savepoint(external_config)
 
@@ -141,12 +129,7 @@ class EmrJobRunner(object):
                 self.__start_job_with_unchanged_query(external_config, self.new_job_conf)
             else:
                 self.__start_new_job_with_changed_query(external_config, self.new_job_conf)
-            self.__upload_job_manifest(self.new_job_conf)
-
-    @staticmethod
-    def __read_config(config_file: str):
-        with open(config_file) as qf:
-            return yaml.load(qf, yaml.FullLoader)
+            self.manifest_manager.upload_job_manifest(self.new_job_conf)
 
     def __is_job_running(self, job_name: str) -> bool:
         return self.flink_cli_runner.is_job_running(job_name)
@@ -168,12 +151,6 @@ class EmrJobRunner(object):
         job_conf.set_meta_query_id(str(uuid.uuid1()))
         job_conf.set_meta_query_create_timestamp(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.__start_with_clean_state(job_conf)
-
-    def __upload_job_manifest(self, job_conf):
-        upload_path = os.path.join(self.external_job_config_prefix, f"{job_conf.get_name()}.yaml")
-        logging.info(f"Uploading the new config file to 's3://{self.external_job_config_bucket}/{upload_path}'.")
-        upload_content(yaml.dump(job_conf.to_dict()), self.external_job_config_bucket, upload_path)
-        logging.info("The config file has been uploaded.")
 
     def __stop_with_savepoint(self, job_conf: JobConfiguration) -> None:
         job_id = self.flink_cli_runner.get_job_id(job_conf.get_name())
@@ -316,12 +293,6 @@ class EmrJobRunner(object):
             logging.info(f"State found at '{state_path}'.")
             return state_path, last_created_ts
 
-    def __fetch_job_manifest(self, bucket_name: str, prefix: str, job_name: str) -> Optional[JobConfiguration]:
-        object_key = os.path.join(prefix, f"{job_name}.yaml")
-        logging.info(f"Looking for config at s3://{bucket_name}/{object_key}.")
-        raw_manifest = get_content(bucket_name, object_key)
-        return JobConfiguration(yaml.safe_load(raw_manifest)) if raw_manifest else None
-
     def __has_job_manifest_changed(self, old_job_conf: JobConfiguration, new_job_conf: JobConfiguration) -> bool:
         return self.__has_job_definition_changed(old_job_conf, new_job_conf) or self.__have_flink_properties_changed(
             old_job_conf, new_job_conf
@@ -352,21 +323,26 @@ class EmrJobRunner(object):
         return query.replace("`", "\\`")
 
 
+def read_config(config_file: str):
+    with open(config_file) as qf:
+        return yaml.load(qf, yaml.FullLoader)
+
+
 if __name__ == "__main__":
     args, passthrough_args = parse_args()
-    flink_cli_runner = (
-        FlinkYarnRunner() if args.deployment_target == "yarn" else FlinkStandaloneClusterRunner(args.jobmanager_address)
-    )
-    jinja_template_resolver = JinjaTemplateResolver()
-
-    EmrJobRunner(
-        args.job_config_path,
-        args.pyflink_runner_dir,
-        args.external_job_config_bucket,
-        args.external_job_config_prefix,
-        args.base_output_path,
-        args.pyexec_path,
-        flink_cli_runner,
-        jinja_template_resolver,
-        passthrough_args,
+    configuration = JobConfiguration(read_config(args.job_config_path))
+    FlinkJobRunner(
+        job_name=configuration.get_name(),
+        new_job_conf=configuration,
+        pyflink_runner_dir=args.pyflink_runner_dir,
+        table_definition_paths=args.base_output_path,
+        pyexec_path=args.pyexec_path,
+        flink_cli_runner=(
+            FlinkYarnRunner()
+            if args.deployment_target == "yarn"
+            else FlinkStandaloneClusterRunner(args.jobmanager_address)
+        ),
+        jinja_template_resolver=JinjaTemplateResolver(),
+        manifest_manager=ManifestManager(args.external_job_config_bucket, args.external_job_config_prefix),
+        passthrough_args=passthrough_args,
     ).run()
