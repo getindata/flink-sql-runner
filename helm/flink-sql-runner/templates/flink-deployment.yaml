@@ -72,10 +72,11 @@ spec:
       - {{ .Values.query.timestamp }}
       - --target-table
       - {{ .Values.query.targetTable | quote }}
-      {{- with .Values.query.flinkSchemas }}
+      {{- with .Values.query.flinkSchemaPaths }}
       - --table-definition-path
         {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{- toYaml .Values.query.runnerExtraParams | nindent 6 }}
     state: {{ .Values.job.state }}
     upgradeMode: {{ .Values.job.upgradeMode }}
     parallelism: {{ .Values.job.parallelism }}
