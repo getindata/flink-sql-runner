@@ -80,7 +80,7 @@ spec:
     upgradeMode: {{ .Values.job.upgradeMode }}
     parallelism: {{ .Values.job.parallelism }}
   {{- end }}
-  {{- with .Values.flinkConfiguration }}
+  {{- if .Values.flinkConfiguration }}
   flinkConfiguration:
-    {{- toYaml . | nindent 4 }}
+    {{- tpl (toYaml .Values.flinkConfiguration) . | nindent 4 }}
   {{- end }}
