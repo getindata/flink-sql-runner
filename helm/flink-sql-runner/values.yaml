@@ -3,6 +3,7 @@ image:
   pullPolicy: IfNotPresent
 flinkVersion: v1_16
 serviceAccount: flink
+restartNonce: 1
 
 jobManager:
   resource:

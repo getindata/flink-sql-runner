@@ -9,6 +9,7 @@ spec:
   imagePullPolicy: {{ .Values.image.pullPolicy }}
   flinkVersion: {{ .Values.flinkVersion }}
   serviceAccount: {{ .Values.serviceAccount }}
+  restartNonce: {{ .Values.restartNonce }}
   jobManager:
     {{- toYaml .Values.jobManager | nindent 4 }}
   taskManager:
@@ -28,18 +29,18 @@ spec:
               {{- toYaml .Values.podTemplate.volumeMounts | nindent 12 }}
             {{- end }}
           {{- end }}
-          {{- if .Values.podTemplate.volumes }}
-          volumes:
-            {{- if .Values.podTemplate.volumes | default false }}
-              {{- toYaml .Values.podTemplate.volumes | nindent 12 }}
-            {{- end }}
-          {{- end }}
           {{- if .Values.podTemplate.env }}
           env:
             {{- if .Values.podTemplate.env | default false }}
               {{- toYaml .Values.podTemplate.env | nindent 12 }}
             {{- end }}
           {{- end }}
+          {{- if .Values.podTemplate.volumes }}
+      volumes:
+        {{- if .Values.podTemplate.volumes | default false }}
+          {{- toYaml .Values.podTemplate.volumes | nindent 12 }}
+          {{- end }}
+      {{- end }}
   {{- end }}
   {{- if and (.Values.job) (.Values.query) }}
   job:
@@ -57,7 +58,7 @@ spec:
       - /opt/flink-sql-runner/flink-run-sql.py
       {{- end }}
       {{- if .Values.query.sql }}
-      - query
+      - --query
       - {{ .Values.query.sql | toYaml | nindent 6 }}
       {{- end }}
       - --metadata-query-name
@@ -67,7 +68,7 @@ spec:
       - --metadata-query-id
       - "{{ .Values.query.name }}-v{{ .Values.query.version }}"
       - --metadata-query-version
-      - {{ .Values.query.version }}
+      - {{ .Values.query.version | quote }}
       - --metadata-query-create-timestamp
       - {{ .Values.query.timestamp }}
       - --target-table
