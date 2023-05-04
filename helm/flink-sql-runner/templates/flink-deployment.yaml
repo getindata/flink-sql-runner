@@ -35,7 +35,7 @@ spec:
               {{- toYaml .Values.podTemplate.env | nindent 12 }}
             {{- end }}
           {{- end }}
-          {{- if .Values.podTemplate.volumes }}
+      {{- if .Values.podTemplate.volumes }}
       volumes:
         {{- if .Values.podTemplate.volumes | default false }}
           {{- toYaml .Values.podTemplate.volumes | nindent 12 }}
