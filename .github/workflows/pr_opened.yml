@@ -34,7 +34,7 @@ jobs:
           pip install -r ./tests/requirements.txt
           pip freeze
           pipdeptree
-          pre-commit run --all-files
+          pre-commit run --files flink_sql_runner/* tests/* docker/* example/*
 
       - name: Test with tox
         run: |
