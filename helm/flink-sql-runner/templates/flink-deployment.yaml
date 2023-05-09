@@ -1,0 +1,88 @@
+---
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: {{  include "flink-sql-runner.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+  imagePullPolicy: {{ .Values.image.pullPolicy }}
+  flinkVersion: {{ .Values.flinkVersion }}
+  serviceAccount: {{ tpl .Values.serviceAccount . }}
+  restartNonce: {{ .Values.restartNonce }}
+  jobManager:
+    {{- toYaml .Values.jobManager | nindent 4 }}
+  taskManager:
+    {{- toYaml .Values.taskManager | nindent 4 }}
+  {{- if .Values.podTemplate }}
+  podTemplate:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: {{ .Values.podTemplate.metadata.name }}
+    spec:
+      containers:
+        - name: flink-main-container
+          {{- if .Values.podTemplate.volumeMounts }}
+          volumeMounts:
+            {{- if .Values.podTemplate.volumeMounts | default false }}
+              {{- toYaml .Values.podTemplate.volumeMounts | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.podTemplate.env }}
+          env:
+            {{- if .Values.podTemplate.env | default false }}
+              {{- toYaml .Values.podTemplate.env | nindent 12 }}
+            {{- end }}
+          {{- end }}
+      {{- if .Values.podTemplate.volumes }}
+      volumes:
+        {{- if .Values.podTemplate.volumes | default false }}
+          {{- toYaml .Values.podTemplate.volumes | nindent 12 }}
+          {{- end }}
+      {{- end }}
+  {{- end }}
+  {{- if and (.Values.job) (.Values.query) }}
+  job:
+    jarURI: {{ .Values.job.jarURI }}
+    entryClass: {{ .Values.job.entryClass }}
+    args:
+      - -pyexec
+      - {{ .Values.python.pyexec }}
+      - -pyclientexec
+      - {{ .Values.python.pyclientexec }}
+      - -py
+      {{- if .Values.query.code }}
+      - /opt/flink-sql-runner/custom-flink-run-sql.py
+      {{ else if .Values.query.sql }}
+      - /opt/flink-sql-runner/flink-run-sql.py
+      {{- end }}
+      {{- if .Values.query.sql }}
+      - --query
+      - {{ .Values.query.sql | toYaml | nindent 6 }}
+      {{- end }}
+      - --metadata-query-name
+      - {{ .Values.query.name }}
+      - --metadata-query-description
+      - {{ .Values.query.description }}
+      - --metadata-query-id
+      - "{{ .Values.query.name }}-v{{ .Values.query.version }}"
+      - --metadata-query-version
+      - {{ .Values.query.version | quote }}
+      - --metadata-query-create-timestamp
+      - {{ .Values.query.timestamp }}
+      - --target-table
+      - {{ .Values.query.targetTable | quote }}
+      {{- with .Values.query.flinkSchemaPaths }}
+      - --table-definition-path
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- toYaml .Values.query.runnerExtraParams | nindent 6 }}
+    state: {{ .Values.job.state }}
+    upgradeMode: {{ .Values.job.upgradeMode }}
+    parallelism: {{ .Values.job.parallelism }}
+  {{- end }}
+  {{- if .Values.flinkConfiguration }}
+  flinkConfiguration:
+    {{- tpl (toYaml .Values.flinkConfiguration) . | nindent 4 }}
+  {{- end }}

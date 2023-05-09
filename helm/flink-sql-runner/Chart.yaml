@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: flink-sql-runner
+description: A chart for Flink SQL Runner.
+type: application
+version: 0.1.0
+appVersion: "1.16.0"

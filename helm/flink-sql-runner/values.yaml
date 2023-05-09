@@ -1,0 +1,30 @@
+---
+image:
+  pullPolicy: IfNotPresent
+flinkVersion: v1_16
+serviceAccount: flink
+restartNonce: 1
+
+jobManager:
+  resource:
+    cpu: 1
+    memory: 1g
+
+taskManager:
+  resource:
+    cpu: 1
+    memory: 1g
+
+job:
+  jarURI: file:///opt/flink/opt/flink-python-1.16.0.jar
+  entryClass: org.apache.flink.client.python.PythonDriver
+  state: "running"
+  upgradeMode: "last-state"
+  parallelism: 1
+  # job.args has to be provided separately for each job.
+
+python:
+  pyexec: /usr/local/bin/python3
+  pyclientexec: /usr/local/bin/python3
+
+flinkConfiguration: {}
