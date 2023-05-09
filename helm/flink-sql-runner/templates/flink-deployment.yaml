@@ -8,7 +8,7 @@ spec:
   image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
   imagePullPolicy: {{ .Values.image.pullPolicy }}
   flinkVersion: {{ .Values.flinkVersion }}
-  serviceAccount: {{ .Values.serviceAccount }}
+  serviceAccount: {{ tpl .Values.serviceAccount . }}
   restartNonce: {{ .Values.restartNonce }}
   jobManager:
     {{- toYaml .Values.jobManager | nindent 4 }}
