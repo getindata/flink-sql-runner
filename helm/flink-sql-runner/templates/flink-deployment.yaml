@@ -59,7 +59,7 @@ spec:
       {{- end }}
       {{- if .Values.query.sql }}
       - --query
-      - {{ .Values.query.sql | toYaml | nindent 6 }}
+      - {{ .Values.query.sql }}
       {{- end }}
       - --metadata-query-name
       - {{ .Values.query.name }}
