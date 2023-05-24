@@ -10,6 +10,10 @@ spec:
   flinkVersion: {{ .Values.flinkVersion }}
   serviceAccount: {{ tpl .Values.serviceAccount . }}
   restartNonce: {{ .Values.restartNonce }}
+  {{- if .Values.ingress }}
+  ingress:
+    {{- toYaml .Values.ingress | nindent 4 }}
+  {{- end }}
   jobManager:
     {{- toYaml .Values.jobManager | nindent 4 }}
   taskManager:
