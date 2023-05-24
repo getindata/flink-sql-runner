@@ -2,7 +2,7 @@
 apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
 metadata:
-  name: {{  include "flink-sql-runner.name" . }}
+  name: {{  tpl .Values.deploymentName . }}
   namespace: {{ .Release.Namespace }}
 spec:
   image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -59,7 +59,7 @@ spec:
       {{- end }}
       {{- if .Values.query.sql }}
       - --query
-      - {{ .Values.query.sql | toYaml | nindent 6 }}
+      - {{ .Values.query.sql }}
       {{- end }}
       - --metadata-query-name
       - {{ .Values.query.name }}
