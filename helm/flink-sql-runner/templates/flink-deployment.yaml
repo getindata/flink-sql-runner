@@ -70,7 +70,7 @@ spec:
       - --metadata-query-version
       - {{ .Values.query.version | quote }}
       - --metadata-query-create-timestamp
-      - {{ .Values.query.timestamp }}
+      - {{ .Values.query.timestamp | quote }}
       - --target-table
       - {{ .Values.query.targetTable | quote }}
       {{- with .Values.query.flinkSchemaPaths }}
