@@ -1,8 +1,8 @@
-import argparse
 import logging
 import os
 import sys
 from typing import Any, Dict, List
+import yaml
 
 import s3fs
 import sqlparse
@@ -21,57 +21,37 @@ def execute_table_definitions(definitions: List[str], params: Dict[str, Any]) ->
         t_env.execute_sql(definition)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--table-definition-path", nargs="+", required=True, help="Path to flink table DDL. Can be path to a file or s3"
-)
-parser.add_argument("--query", "-q", required=True, help="SQL query to execute.")
-parser.add_argument("--target-table", "-tt", required=False, help="Target table where to write results of the query.")
-parser.add_argument("--metadata-query-name", "-qname", required=False, help="Human readable SQL query name.")
-parser.add_argument("--metadata-query-description", "-qdesc", required=False, help="SQL query description.")
-parser.add_argument("--metadata-query-id", "-qid", required=False, help="Unique SQL query id.")
-parser.add_argument(
-    "--metadata-query-version",
-    "-qv",
-    type=int,
-    required=False,
-    help="SQL query version, monotonously increasing, starts from 1.",
-)
-parser.add_argument(
-    "--metadata-query-create-timestamp", "-qtime", required=False, help="When has the SQL query been deployed."
-)
-parser.add_argument(
-    "--template-params",
-    required=False,
-    nargs="+",
-    help="Extra parameters that will be used when resolving template variables. Each should have form 'key=value'.",
-)
-parser.add_argument(
-    "--timestamp-field-name",
-    required=False,
-    type=str,
-    default="__create_timestamp",
-    help="The name of the field containing the creation of the event.",
-)
-parser.add_argument(
-    "--include-query-metadata",
-    required=False,
-    action="store_true",
-    default=True,
-    help="Indicates whether '__query_*' metadata fields should be added to the result.",
-)
+args = sys.argv
+config_yaml_path = args[1]
 
-args = parser.parse_args(sys.argv[1:])
+with open(config_yaml_path, "r") as stream:
+    try:
+        data = yaml.load(stream, yaml.FullLoader)
+
+        query = data["query"]
+        target_table = data["target_table"]
+        table_definition_path = data["table_definition_path"]
+        metadata_query_name = data["metadata_query_name"]
+        metadata_query_description = data["metadata_query_description"]
+        metadata_query_id = data["metadata_query_id"]
+        metadata_query_version = data["metadata_query_version"]
+        metadata_query_create_timestamp = data["metadata_query_create_timestamp"]
+        template_params = data["template_params"]
+        timestamp_field_name = data["timestamp_field_name"]
+        include_query_metadata = data["include_query_metadata"]
+
+    except yaml.YAMLError as exc:
+        print(exc)
 
 env = StreamExecutionEnvironment.get_execution_environment()
 t_env = StreamTableEnvironment.create(env)
 
-sql_paths = args.table_definition_path
-template_params = args.template_params if args.template_params else []
+sql_paths = table_definition_path
+template_params = template_params if template_params else []
 
 table_definitions_params = {
     # Each job should have a unique Kafka group.id.
-    "group_id": f"rta-{args.metadata_query_name}-{args.metadata_query_version}",
+    "group_id": f"rta-{metadata_query_name}-{metadata_query_version}",
 }
 
 for template_param in template_params:
@@ -92,28 +72,28 @@ for path in sql_paths:
             execute_table_definitions(sqlparse.split(file.read()), table_definitions_params)
 
 result_fields = ["*"]
-if args.timestamp_field_name:
-    result_fields.append(f"NOW() AS {args.timestamp_field_name}")
-if args.include_query_metadata:
+if timestamp_field_name:
+    result_fields.append(f"NOW() AS {timestamp_field_name}")
+if include_query_metadata:
     result_fields.extend(
         [
-            f"CAST('{args.metadata_query_name}' AS STRING) AS __query_name",
-            f"CAST('{args.metadata_query_description}' AS STRING) AS __query_description",
-            f"CAST('{args.metadata_query_id}' AS STRING) AS __query_id",
-            f"CAST({args.metadata_query_version} AS INT) AS __query_version",
-            f"CAST('{args.metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp",
+            f"CAST('{metadata_query_name}' AS STRING) AS __query_name",
+            f"CAST('{metadata_query_description}' AS STRING) AS __query_description",
+            f"CAST('{metadata_query_id}' AS STRING) AS __query_id",
+            f"CAST({metadata_query_version} AS INT) AS __query_version",
+            f"CAST('{metadata_query_create_timestamp}' AS TIMESTAMP) AS __query_create_timestamp",
         ]
     )
 
-load_query = f"""INSERT INTO {args.target_table}
+load_query = f"""INSERT INTO {target_table}
 SELECT
 {"    ,".join(result_fields)}
 FROM
     {TEMPORARY_INPUT_VIEW_NAME}
 ;"""
 
-logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n{args.query}\n\n")
-table = t_env.sql_query(args.query)
+logging.info(f"Creating temporary view {TEMPORARY_INPUT_VIEW_NAME}: \n{query}\n\n")
+table = t_env.sql_query(query)
 t_env.create_temporary_view(TEMPORARY_INPUT_VIEW_NAME, table)
 
 logging.info(f"Running generated insert query:\n{load_query}")
